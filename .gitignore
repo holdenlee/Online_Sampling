@@ -3,3 +3,5 @@
 *.png
 data/*
 *.csv
+src/.ipynb_checkpoints/
+src/ts_tutorial/
