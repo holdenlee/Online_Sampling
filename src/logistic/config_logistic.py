@@ -14,6 +14,7 @@ from logistic.agent_logistic import GreedyLogisticBandit
 from logistic.agent_logistic import EpsilonGreedyLogisticBandit
 from logistic.agent_logistic import LaplaceTSLogisticBandit
 from logistic.agent_logistic import LangevinTSLogisticBandit
+from logistic.agent_logistic import SAGALDTSLogisticBandit
 
 def get_config():
   """Generates the config for the experiment."""
@@ -39,6 +40,10 @@ def get_config():
        # functools.partial(GreedyLogisticBandit,
        #                   num_articles, dim, theta_mean, theta_std, epsilon1,
        #                   alpha,beta,tol)),
+       ('SAGA-LD TS',
+        functools.partial(SAGALDTSLogisticBandit,
+                          num_articles, dim, theta_mean, theta_std, epsilon1,
+                          alpha,beta,tol,batch_size,step_count,step_size)),
        ('Langevin TS',
         functools.partial(LangevinTSLogisticBandit,
                           num_articles, dim, theta_mean, theta_std, epsilon1,
@@ -67,7 +72,7 @@ def get_config():
   experiments = collections.OrderedDict(
       [(name, ExperimentNoAction)]
   )
-  n_steps = 500 #5000
+  n_steps = 1000 #5000
   n_seeds = 10000
   config = Config(name, agents, environments, experiments, n_steps, n_seeds)
   return config
