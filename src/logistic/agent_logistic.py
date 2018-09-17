@@ -279,3 +279,32 @@ class LangevinTSLogisticBandit(GreedyLogisticBandit):
     article = np.argmax(sampled_rewards)
     return article
  
+class SAGALDTSLogisticBandit(LangevinTSLogisticBandit):
+  def _compute_stochastic_gradient(self, x, article):
+    '''computes a stochastic gradient of the negative log-posterior for the given
+     article.'''
+    xstar = self.current_map_estimates[article]
+    if self.num_plays[article]<=self.batch_size:
+      sample_indices = range(self.num_plays[article])
+      gradient_scale = 1
+    else:
+      gradient_scale = self.num_plays[article]/self.batch_size
+      sample_indices = rnd.sample(range(self.num_plays[article]),self.batch_size)
+    
+    g = np.zeros(self.dim)
+    for i in sample_indices: #should parallelize this!
+      z = self.contexts[article][i]
+      y = self.rewards[article][i]
+      pred = 1/(1+np.exp(-x.dot(z)))
+      if self.num_plays[article]<=self.batch_size:
+        g = g + (pred-y)*z
+      else:
+        pred_xstar = 1/(1+np.exp(-xstar.dot(z)))
+        g = g + (pred - pred_xstar)*z #variance-reduced gradient
+      
+    g_prior,_ = self._compute_gradient_hessian_prior(x)
+    g = gradient_scale*g + g_prior
+    return g
+    
+    
+    
