@@ -1,3 +1,8 @@
+Fork
+====
+
+Added variance-reduced SGLD.
+
 A Tutorial on Thompson Sampling - Accompanying Code
 ===================================================
 
