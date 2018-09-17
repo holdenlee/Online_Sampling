@@ -1,7 +1,7 @@
 Fork
 ====
 
-Added variance-reduced SGLD.
+Added variance-reduced SGLD for logistic contextual bandits.
 
 A Tutorial on Thompson Sampling - Accompanying Code
 ===================================================
