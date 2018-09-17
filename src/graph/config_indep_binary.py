@@ -35,24 +35,24 @@ def get_config():
   langevin_step_size = 0.0005
   epsilon = 0
   
-  agents = collections.OrderedDict(
-      [('Langevin TS',
-        functools.partial(EpsilonGreedyIndependentBBWithBinaryReward,
-                          n_stages, epsilon, shape, scale, tol, alpha, beta))])
-  
-  
 #  agents = collections.OrderedDict(
 #      [('Langevin TS',
-#        functools.partial(StochasticLangevinMCMCIndependentBBWithBinaryReward,
-#                          n_stages, shape, scale, tol, alpha, beta, langevin_batch_size,
-#                          langevin_step_count, langevin_step_size)),
-#       ('bootstrap TS',
-#        functools.partial(BootstrapIndependentBBWithBinaryReward,
-#                          n_stages, shape, scale, tol, alpha, beta)),
-#       ('Laplace TS',
-#        functools.partial(LaplaceIndependentBBWithBinaryReward,
-#                          n_stages, shape, scale, tol, alpha, beta))]
-#  )
+#        functools.partial(EpsilonGreedyIndependentBBWithBinaryReward,
+#                          n_stages, epsilon, shape, scale, tol, alpha, beta))])
+#  
+  
+  agents = collections.OrderedDict(
+     [('Langevin TS',
+       functools.partial(StochasticLangevinMCMCIndependentBBWithBinaryReward,
+                         n_stages, shape, scale, tol, alpha, beta, langevin_batch_size,
+                         langevin_step_count, langevin_step_size)),
+      ('bootstrap TS',
+       functools.partial(BootstrapIndependentBBWithBinaryReward,
+                         n_stages, shape, scale, tol, alpha, beta)),
+      ('Laplace TS',
+       functools.partial(LaplaceIndependentBBWithBinaryReward,
+                         n_stages, shape, scale, tol, alpha, beta))]
+  )
        
   environments = collections.OrderedDict(
       [('env',

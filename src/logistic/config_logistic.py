@@ -35,22 +35,22 @@ def get_config():
   
 
   agents = collections.OrderedDict(
-      [('greedy',
-        functools.partial(GreedyLogisticBandit,
-                          num_articles, dim, theta_mean, theta_std, epsilon1,
-                          alpha,beta,tol)),
+      [#('greedy',
+       # functools.partial(GreedyLogisticBandit,
+       #                   num_articles, dim, theta_mean, theta_std, epsilon1,
+       #                   alpha,beta,tol)),
        ('Langevin TS',
         functools.partial(LangevinTSLogisticBandit,
                           num_articles, dim, theta_mean, theta_std, epsilon1,
                           alpha,beta,tol,batch_size,step_count,step_size)),
-       (str(epsilon1)+'-greedy',
-        functools.partial(EpsilonGreedyLogisticBandit,
-                          num_articles, dim, theta_mean, theta_std, epsilon1,
-                          alpha,beta,tol)),
-       (str(epsilon2)+'-greedy',
-        functools.partial(EpsilonGreedyLogisticBandit,
-                          num_articles, dim, theta_mean, theta_std, epsilon2,
-                          alpha,beta,tol)),
+       #(str(epsilon1)+'-greedy',
+       # functools.partial(EpsilonGreedyLogisticBandit,
+       #                   num_articles, dim, theta_mean, theta_std, epsilon1,
+       #                   alpha,beta,tol)),
+       #(str(epsilon2)+'-greedy',
+       # functools.partial(EpsilonGreedyLogisticBandit,
+       #                   num_articles, dim, theta_mean, theta_std, epsilon2,
+       #                   alpha,beta,tol)),
        ('Laplace TS',
         functools.partial(LaplaceTSLogisticBandit,
                           num_articles, dim, theta_mean, theta_std, epsilon1,
@@ -67,7 +67,7 @@ def get_config():
   experiments = collections.OrderedDict(
       [(name, ExperimentNoAction)]
   )
-  n_steps = 5000
+  n_steps = 500 #5000
   n_seeds = 10000
   config = Config(name, agents, environments, experiments, n_steps, n_seeds)
   return config
