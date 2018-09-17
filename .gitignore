@@ -5,3 +5,5 @@ data/*
 *.csv
 src/.ipynb_checkpoints/
 src/ts_tutorial/
+*~
+.DS_Store
