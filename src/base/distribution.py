@@ -11,20 +11,20 @@ class Distribution(object):
     #def generate(self):
     #    pass
 
-class NormalDistribution(Distribution):
+class NormalDist(Distribution):
     def __init__(self, mean, var, dim=None):
         self.mean=mean
         self.var=var
         self.dim=dim
     def __call__(self): 
         #generate(self):
-        if dim==None:
+        if self.dim==None:
             return np.random.multivariate_normal(self.mean,self.var)
         else:
             #return np.random.multivariate_normal(np.full(dim,mean),np.diag(np.full(dim,mean)))
             return np.random.normal(loc=self.mean, scale=np.sqrt(self.var), size=self.dim)
 
-class BernoulliDistribution(Distribution):
+class BernoulliDist(Distribution):
     def __init__(self, p, dim):
         self.p=p # self.dim-1
         self.dim=dim

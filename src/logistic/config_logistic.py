@@ -66,7 +66,7 @@ def get_config():
   environments = collections.OrderedDict(
       [('env',
         functools.partial(LogisticBandit,
-          num_articles, dim, theta_mean, theta_std))]
+          num_articles, dim, None, None))] #theta_mean, theta_std))]
   )
       
   experiments = collections.OrderedDict(

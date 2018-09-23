@@ -21,7 +21,7 @@ class TimedFunction(object):
   def run(self):
     start = time.time()
     self.setup()
-    for(int i; i<=max_steps; i++):
+    for i in range(max_steps):
       self.step()
       if end - start >= self.max_time:
         break

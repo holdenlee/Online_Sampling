@@ -9,7 +9,7 @@ import scipy.linalg as spla
 import random as rnd
 
 from base.agent import Agent
-from base.distribution import *
+#from base.distribution import *
 from base.timing import *
 import time
 
@@ -48,15 +48,15 @@ class GreedyLogisticBandit(Agent):
     self.current_map_estimate = self.theta_mean*np.ones(self.dim)
     #[self.theta_mean*np.ones(self.dim) 
     #                                        for _ in range(self.num_articles)]
-    self.current_Hessian = np.diag([1/self.theta_std**2]*self.dim))
+    self.current_Hessian = np.diag([1/self.theta_std**2]*self.dim)
                                             #for _ in range(self.num_articles)]
   
     # keeping the observations for each article
     self.num_plays = 0
       #[0 for _ in range(self.num_articles)]
-    self.contexts = []
+    self.contexts = np.asarray([])
       #[[] for _ in range(self.num_articles)]
-    self.rewards = [] 
+    self.rewards = np.asarray([]) 
       #[[] for _ in range(self.num_articles)]
     
   def _compute_gradient_hessian_prior(self,x):
@@ -139,11 +139,11 @@ class GreedyLogisticBandit(Agent):
 
     step = 1
     current_function_value = self._evaluate_negative_log_posterior(x) #, article)
-    difference = self._evaluate_negative_log_posterior(x + step*dx) - \ # , article) - \
-    (current_function_value + self.back_track_alpha*step*g.dot(dx))
+    difference = self._evaluate_negative_log_posterior(x + step*dx) - \
+        (current_function_value + self.back_track_alpha*step*g.dot(dx))
     while difference > 0:
       step = self.back_track_beta * step
-      difference = self._evaluate_negative_log_posterior(x + step*dx) - \ #, article) - \
+      difference = self._evaluate_negative_log_posterior(x + step*dx) - \
           (current_function_value + self.back_track_alpha*step*g.dot(dx))
 
     return step
@@ -184,8 +184,8 @@ class GreedyLogisticBandit(Agent):
       start = time.time()
     self.num_plays +=1
       #[article] += 1
-    self.contexts.append(context[article])
-    self.rewards.append(feedback)
+    self.contexts = np.append(self.contexts,[context[article]])
+    self.rewards = np.append(self.rewards, [feedback])
     #self.contexts[article].append(context[article])
     #self.rewards[article].append(feedback)
     
@@ -312,7 +312,7 @@ class LangevinTSLogisticBandit(GreedyLogisticBandit):
       scaled_grad=preconditioner.dot(g)
       scaled_noise = preconditioner_sqrt.dot(np.random.randn(self.dim)) 
       x = x + self.step_size * scaled_grad+np.sqrt(2*self.step_size)*scaled_noise
-    return sampled_theta
+    return x
   
   def _sampled_rewards(self,context):
     sampled_rewards = []
