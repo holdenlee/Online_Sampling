@@ -6,29 +6,29 @@ from __future__ import print_function
 
 import numpy as np
 
+
 from base.environment import Environment
-from base.distribution import *
 
 class LogisticBandit(Environment):
   """Logistic Bandit Environment. The environment provides the features 
   vectors at any period and determines the rewards of a played action."""
 
-  def __init__(self,num_articles,dim,theta_dist=None,arm_dist=None)
-    #theta_mean=0,theta_std=1):
-    # dim is actually (dimension of feature space) + 1 because it includes bias term
+  def __init__(self,num_articles,dim,theta_mean=0,theta_std=1):
     """Args:
       num_articles - number of arms
       dim - dimension of the problem
-      theta_dist - distribution of theta
-      arm_dist - distribution of arms
+      theta_mean - mean of each component of theta
+      theta_std - std of each component of theta
       """
     #TODO: (opt) generalize theta to any distribution
     self.num_articles = num_articles
     self.dim = dim
-    self.theta_dist = theta_dist if theta_dist /= None else NormalDistribution(0,1,dim=dim)
-    self.arm_dist = arm_dist if arm_dist /= None else DistributionWithConstant(BernoulliDistribution(1.0/(dim - 1),dim - 1))
-    #(lambda: np.random.binomial(1,max(0,1/(self.dim-1)),self.dim))
-    self.theta = self.theta_dist()
+    self.theta_mean = theta_mean
+    self.theta_std = theta_std
+    
+    # generating the true parameters
+    self.thetas = [self.theta_mean + self.theta_std*np.random.randn(self.dim) 
+                                            for _ in range(self.num_articles)]
     
     # keeping current rewards
     self.current_rewards = [0]*self.num_articles
@@ -38,10 +38,12 @@ class LogisticBandit(Environment):
     reward of each article.'''
     
     context = []
+    #TODO: (opt) generalize distribution of context vectors
+    context_vector = np.random.binomial(1,max(0,1/(self.dim-1)),self.dim)
+    context_vector[0] = 1        
     for i in range(self.num_articles):
-      context_vector = self.arm_dist()
       context.append(context_vector)
-      self.current_rewards[i] = 1/(1+np.exp(-self.theta.dot(context_vector)))
+      self.current_rewards[i] = 1/(1+np.exp(-self.thetas[i].dot(context_vector)))
         
     return context
     
