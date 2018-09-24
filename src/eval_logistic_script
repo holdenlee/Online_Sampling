@@ -1,0 +1,4 @@
+#!/bin/bash
+
+source ts_tutorial/bin/activate
+python2 eval_logistic.py
