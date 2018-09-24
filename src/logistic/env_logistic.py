@@ -13,7 +13,7 @@ class LogisticBandit(Environment):
   """Logistic Bandit Environment. The environment provides the features 
   vectors at any period and determines the rewards of a played action."""
 
-  def __init__(self,num_articles,dim,theta_dist=None,arm_dist=None):
+  def __init__(self,num_articles,dim,theta_dist=None,arm_dist=None,seed=None):
     #theta_mean=0,theta_std=1):
     # dim is actually (dimension of feature space) + 1 because it includes bias term
     """Args:
@@ -22,16 +22,17 @@ class LogisticBandit(Environment):
       theta_dist - distribution of theta
       arm_dist - distribution of arms
       """
-    #TODO: (opt) generalize theta to any distribution
+    if seed is not None:
+        np.random.seed(seed) #upgrade this to its own RNG
     self.num_articles = num_articles
     self.dim = dim
     self.theta_dist = theta_dist if theta_dist != None else NormalDist(0,1,dim=dim)
     self.arm_dist = arm_dist if arm_dist != None else DistributionWithConstant(BernoulliDist(1.0/(dim - 1),dim - 1))
     #(lambda: np.random.binomial(1,max(0,1/(self.dim-1)),self.dim))
-    print(self.theta_dist)
-    print(type(self.theta_dist))
+    #print(self.theta_dist)
+    #print(type(self.theta_dist))
     self.theta = self.theta_dist()
-    
+    print('theta', self.theta)
     # keeping current rewards
     self.current_rewards = [0]*self.num_articles
     

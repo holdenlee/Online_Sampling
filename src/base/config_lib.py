@@ -72,9 +72,15 @@ def get_job_config(config_in, job_id):
   """
   for job_info in iterate_through_config(config_in):
     if job_id == job_info['unique_id']:
-      agent = job_info['agent_constructor']()
-      env = job_info['environment_constructor']()
       seed = job_info['seed']
+      agent = job_info['agent_constructor']()
+      #Subtle point: the environment should take a seed, because 
+        #the experiment sets the seed, but that is not called until after the environment
+        #constructor! The environment constructor has randomness.
+      try:
+        env = job_info['environment_constructor'](seed = seed)
+      except TypeError:
+        env = job_info['environment_constructor']()
       unique_id = job_info['unique_id']
       exp = job_info['experiment_constructor'](
           agent, env, config_in.n_steps, seed, unique_id=unique_id)

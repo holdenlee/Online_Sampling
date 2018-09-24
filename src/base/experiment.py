@@ -35,7 +35,7 @@ class BaseExperiment(object):
     self.results = []
     self.data_dict = {}
     self.rec_freq = rec_freq
-
+    np.random.seed(self.seed)
 
   def run_step_maybe_log(self, t):
     # Evolve the bandit (potentially contextual) for one step and pick action

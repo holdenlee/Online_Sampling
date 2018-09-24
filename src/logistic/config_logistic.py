@@ -78,7 +78,7 @@ def get_config():
   experiments = collections.OrderedDict(
       [(name, ExperimentNoAction)]
   )
-  n_steps = 5000
+  n_steps = 1000 #5000 #CHANGE
   n_seeds = 10000
   config = Config(name, agents, environments, experiments, n_steps, n_seeds)
   return config
