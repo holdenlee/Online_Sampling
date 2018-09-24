@@ -68,7 +68,7 @@ class BaseExperiment(object):
 
   def run_experiment(self):
     """Run the experiment for n_steps and collect data."""
-    np.random.seed(self.seed)
+    #np.random.seed(self.seed) #Holden: commented out
     self.cum_regret = 0
     self.cum_optimal = 0
 

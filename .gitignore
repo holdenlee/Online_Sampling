@@ -6,4 +6,8 @@ data/*
 src/.ipynb_checkpoints/
 src/ts_tutorial/
 *~
+*.out
+*.csv
+*.pickle
+log.txt
 .DS_Store
