@@ -49,7 +49,7 @@ LIST_OF_VALID_CONFIGS = ['finite_arm.config_simple',
 
 CONFIG_PATH = 'logistic.config_logistic'
     #'finite_arm.config_simple'
-N_JOBS = 1000
+N_JOBS = 100
 
 
 #############################################################################
@@ -99,5 +99,5 @@ q = (gg.ggplot(plt_df_cum_regret)
      + gg.geom_line())
 q
 """
-df.to_csv('data_09-24_trials_1000_t_5000')
+df.to_csv('data_09-24_jobs_100_t_5000')
     #'data_09-24_trials_3_t_1000.pickle')

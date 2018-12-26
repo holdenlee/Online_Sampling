@@ -35,6 +35,7 @@ class LogisticBandit(Environment):
     print('theta', self.theta)
     # keeping current rewards
     self.current_rewards = [0]*self.num_articles
+    self.stochastic_rewards = [0]*self.num_articles
     
   def get_observation(self):
     '''generates context vector and computes the true
@@ -45,17 +46,20 @@ class LogisticBandit(Environment):
       context_vector = self.arm_dist()
       context.append(context_vector)
       self.current_rewards[i] = 1/(1+np.exp(-self.theta.dot(context_vector)))
+      self.stochastic_rewards[i] = np.random.binomial(1,self.current_rewards[i])
         
     return context
     
   def get_optimal_reward(self):
     return np.max(self.current_rewards)
+    # return np.max(self.stochastic_rewards)
   
   def get_expected_reward(self,article):
     return self.current_rewards[article]
   
   def get_stochastic_reward(self,article):
-    expected_reward = self.get_expected_reward(article)
-    stochastic_reward = np.random.binomial(1,expected_reward)
+    #expected_reward = self.get_expected_reward(article)
+    #stochastic_reward = np.random.binomial(1,expected_reward)
+    stochastic_reward = self.stochastic_rewards[article]
     return stochastic_reward
 

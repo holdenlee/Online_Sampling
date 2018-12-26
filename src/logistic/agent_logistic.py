@@ -1,4 +1,4 @@
-"""Agents for news recommendation problem."""
+"""Agents for logistic problem."""
 
 from __future__ import division
 from __future__ import print_function
@@ -8,6 +8,7 @@ import numpy.linalg as npla
 import scipy.linalg as spla
 import random as rnd
 
+from algorithms.langevin import *
 from base.agent import Agent
 #from base.distribution import *
 from base.timing import *
@@ -483,3 +484,83 @@ class OSAGALDTSLogisticBandit(LangevinTSLogisticBandit):
     g_prior,_ = self._compute_gradient_hessian_prior(x)
     g = g + g_prior
     return g  
+
+##################################### 12/25
+class DefaultAgent(Agent):
+    def __init__(self,dim):
+        self.dim=dim
+        self.num_plays = 0
+        self.contexts = np.zeros((0,self.dim))
+        self.rewards = np.asarray([]) 
+    def update_observation(self, context, article, feedback):
+        self.num_plays +=1
+        self.contexts = np.append(self.contexts,[context[article]], axis=0)
+        self.rewards = np.append(self.rewards, [feedback])
+    def pick_action(self,context):
+        return 0
+
+class ThompsonSampler(Agent):
+  """Greedy News Recommender."""
+  
+  def __init__(self,num_articles,dim):
+    self.num_articles = num_articles
+    self.dim = dim
+  
+    # keeping the observations for each article
+    self.num_plays = 0
+    self.contexts = np.zeros((0,self.dim))
+    self.rewards = np.asarray([]) 
+    
+  def get_sample(self):
+    return
+    #subclass should define this
+  
+  def update_observation(self, context, article, feedback):
+    '''updates the observations for displayed article, given the context and 
+    user's feedback. The new observations are saved in the history of the 
+    displayed article.
+    
+    Args:
+      context - a list containing observed context vector for each article
+      article - article which was recently shown
+      feedback - user's response.
+      '''
+    self.num_plays +=1
+    self.contexts = np.append(self.contexts,[context[article]], axis=0)
+    self.rewards = np.append(self.rewards, [feedback])
+  
+  def pick_action(self,context):
+    '''Greedy action based on sample.'''
+    sample = self.get_sample()
+    sample_rewards = [evaluate_log1pexp(np.dot(sample, ctxt)) for ctxt in context]
+    article = np.argmax(sample_rewards)
+    #if self.time:
+    #  end=time.time()
+    #  print("(pick_action, %s) Time Elapsed: %f" % (end - start))
+    return article
+
+
+class BasicLangevinTS(ThompsonSampler):
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None):
+        ThompsonSampler.__init__(self, num_articles, dim)
+        self.mu = mu
+        self.cov = cov
+        self.step_size = step_size
+        self.n_steps = n_steps
+        self.theta = init_pt
+        
+    def get_sample(self):
+        self.theta = langevin(self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
+                              step_size = self.step_size / (self.num_plays + 1), n_steps = self.n_steps, init_pt = self.theta)
+        return self.theta
+    
+
+
+
+
+
+
+
+
+
+
