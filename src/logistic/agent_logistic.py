@@ -588,17 +588,44 @@ class ThompsonSampler(Agent):
     #  print("(pick_action, %s) Time Elapsed: %f" % (end - start))
     return article
 
+def round_down_to_power_2(n):
+    return 2**(int(math.log(n,2))) if n>0 else 0
 
-class BasicLangevinTS(ThompsonSampler):
-    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0):
+class LangevinTS(ThompsonSampler):
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0, precondition=False):
         ThompsonSampler.__init__(self, num_articles, dim, time, verbosity)
         self.mu = mu
-        self.cov = cov
+        self.cov = cov if cov is not None else np.eye(dim)
         #default: eta_t = eta_0/(1+t/d)
         self.step_size = step_size if callable(step_size) else (lambda t: step_size/(t/dim+1))
         self.n_steps = n_steps
         self.theta = init_pt
+        self.precondition = precondition
+        if precondition:
+            self.H = npla.inv(self.cov)
+            self.last_theta=self.theta
+            self.last_last_theta = self.theta
+        else:
+            self.H = None
         
+    def update_observation(self, context, article, feedback):
+        super(LangevinTS, self).update_observation(context, article, feedback)
+        if self.precondition == 'full':
+            self.H = npla.inv(self.cov) + logistic_Hessian(self.theta, self.contexts)
+        elif self.precondition == 'cum': #cumulative
+            self.H += logistic_Hessian(self.theta, context)
+        elif self.precondition == 'proper':
+            tp = round_down_to_power_2(self.num_plays)
+            if self.num_plays == tp:
+                self.H += logistic_Hessian(self.theta, context)
+                self.last_last_theta = self.last_theta
+                self.last_theta=self.theta
+            else: #refresh previous gradients
+                self.H += logistic_Hessian(self.last_theta, context) -\
+                          logistic_Hessian(self.last_last_theta, self.context[self.num_plays - tp - 1]) +\
+                          logistic_Hessian(self.last_theta, self.context[self.num_plays - tp - 1])
+        
+class BasicLangevinTS(LangevinTS):        
     def get_sample(self):
         self.theta, steps = langevin(self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
                               time_limit = self.time,
@@ -607,16 +634,7 @@ class BasicLangevinTS(ThompsonSampler):
         printv(" Steps taken: %d" % steps, self.v, 1)
         return self.theta
     
-class MalaTS(ThompsonSampler):
-    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0):
-        ThompsonSampler.__init__(self, num_articles, dim, time, verbosity)
-        self.mu = mu
-        self.cov = cov
-        #default: eta_t = eta_0/(1+t/d)
-        self.step_size = step_size if callable(step_size) else (lambda t: step_size/(t/dim+1))
-        self.n_steps = n_steps
-        self.theta = init_pt
-        
+class MalaTS(LangevinTS):        
     def get_sample(self):
         self.theta, self.accepts, steps = mala(self.dim, [self.contexts, self.rewards], 
                                         logistic_f, Gaussian_prior_f(self.mu),
@@ -628,15 +646,9 @@ class MalaTS(ThompsonSampler):
         printv(" Steps taken: %d" % steps, self.v, 1)
         return self.theta
     
-class SGLDTS(ThompsonSampler):
-    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0):
-        ThompsonSampler.__init__(self, num_articles, dim, time, verbosity)
-        self.mu = mu
-        self.cov = cov if cov is not None else np.eye(dim)
-        #default: eta_t = eta_0/(1+t/d)
-        self.step_size = step_size if callable(step_size) else (lambda t: step_size/(t/dim+1))
-        self.n_steps = n_steps
-        self.theta = init_pt
+class SGLDTS(LangevinTS):
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
+        LangevinTS.__init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0)
         self.batch_size = batch_size
         
     def get_sample(self):
@@ -651,19 +663,20 @@ class SGLDTS(ThompsonSampler):
         printv(" Steps taken: %d" % steps, self.v, 1)
         return self.theta
 
-class SAGATS(ThompsonSampler):
-    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0):
-        ThompsonSampler.__init__(self, num_articles, dim, time, verbosity)
-        self.mu = mu
-        self.cov = cov if cov is not None else np.eye(dim)
-        #default: eta_t = eta_0/(1+t/d)
-        self.step_size = step_size if callable(step_size) else (lambda t: step_size/(t/dim+1))
-        self.n_steps = n_steps
-        self.theta = init_pt
+class SAGATS(LangevinTS):
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
+        LangevinTS.__init__(self, num_articles, dim, mu, cov, step_size, n_steps, init_pt, time, verbosity)
         self.batch_size = batch_size
-        self.gradient = None
-        self.gradients = None
-        
+        self.gradients = np.zeros((0,dim))#None
+        self.gradient = np.zeros(dim) #None
+    
+    def update_observation(self, context, article, feedback):
+        super(SAGATS, self).update_observation(context, article, feedback)
+        new_gradient = logistic_grad_f(self.theta, (np.asarray([context[article]]), [feedback]))
+        #print(self.gradients, new_gradient)
+        self.gradients = np.append(self.gradients, new_gradient, axis=0)
+        self.gradient += new_gradient[0]
+    
     def get_sample(self):
         if self.num_plays == 0:
             self.theta = np.random.multivariate_normal(self.mu,self.cov)
