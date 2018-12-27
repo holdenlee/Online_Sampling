@@ -11,7 +11,7 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 import time
-
+from utils import *
 
 ##############################################################################
 
@@ -22,7 +22,7 @@ class BaseExperiment(object):
   """
 
   def __init__(self, agent, environment, n_steps,
-               seed=0, rec_freq=1, unique_id='NULL'):
+               seed=0, rec_freq=1, unique_id='NULL', verbosity=0):
     """Setting up the experiment.
 
     Note that unique_id should be used to identify the job later for analysis.
@@ -37,6 +37,7 @@ class BaseExperiment(object):
     self.data_dict = {}
     self.rec_freq = rec_freq
     np.random.seed(self.seed)
+    self.v = verbosity
 
   def run_step_maybe_log(self, t):
     # Evolve the bandit (potentially contextual) for one step and pick action
@@ -233,7 +234,7 @@ class ExperimentMultipleAgents(BaseExperiment):
 class ExperimentCompare(BaseExperiment):
     
   def __init__(self, agents, environment, n_steps,
-               seed=0, rec_freq=1, unique_id='NULL'):
+               seed=0, rec_freq=1, unique_id='NULL', verbosity=0):
     """Setting up the experiment.
 
     Note that unique_id should be used to identify the job later for analysis.
@@ -252,6 +253,7 @@ class ExperimentCompare(BaseExperiment):
     self.num_agents = len(agents)
     # override
     self.cum_regret = [0 for _ in agents]
+    self.v = verbosity
 
   def run_step_maybe_log(self, t):
     # Evolve the bandit (potentially contextual) for one step and pick action
@@ -303,6 +305,7 @@ class ExperimentCompare(BaseExperiment):
     self.cum_optimal = 0
 
     for t in range(self.n_steps):
+      printv("Experiment: Step %d" % t, self.v, 1)
       self.run_step_maybe_log(t)
 
     self.results = pd.DataFrame(self.results)

@@ -3,6 +3,8 @@ Fork
 
 Added variance-reduced SGLD for logistic contextual bandits.
 
+To push: `git push https://github.com/holdenlee/ts_tutorial.git master`.
+
 A Tutorial on Thompson Sampling - Accompanying Code
 ===================================================
 

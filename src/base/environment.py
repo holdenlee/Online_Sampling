@@ -14,9 +14,9 @@ import numpy as np
 class Environment(object):
   """Base class for all bandit environments."""
 
-  def __init__(self):
+  def __init__(self, verbosity=0):
     """Initialize the environment."""
-    pass
+    self.v = verbosity
 
   def get_observation(self):
     """Returns an observation from the environment."""

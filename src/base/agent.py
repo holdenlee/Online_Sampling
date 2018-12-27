@@ -21,9 +21,10 @@ def random_argmax(vector):
 class Agent(object):
   """Base class for all bandit agents."""
 
-  def __init__(self):
+  def __init__(self, time=False, verbosity=1):
     """Initialize the agent."""
-    pass
+    self.time = time
+    self.v = verbosity
 
   def update_observation(self, observation, action, reward):
     """Add an observation to the records."""

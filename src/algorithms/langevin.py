@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as la
 import random as rnd
 import time
 
@@ -28,6 +29,11 @@ def logistic_grad_f(x, data):
     grads = np.diag(preds - ys).dot(zs)
     return grads
 
+def logistic_f(x, data):
+    zs = data[0]
+    ys = data[1]
+    return evaluate_log1pexp(x.dot(zs.T)) - ys * x.dot(zs.T)
+
 class Gaussian_prior_grad_f(object):
     # mu : R^d
     # cov : Maybe (R^d)^d
@@ -38,10 +44,21 @@ class Gaussian_prior_grad_f(object):
     def __call__(self, x):
         #print(np.shape(x), np.shape(self.mu))
         return self.inv_cov.dot(x-self.mu)
+    
+class Gaussian_prior_f(object):
+    # mu : R^d
+    # cov : Maybe (R^d)^d
+    def __init__(self, mu, cov=None):
+        d = np.shape(mu)[0]
+        self.inv_cov = np.eye(d) if cov is None else np.linalg.inv(cov)
+        self.mu = mu
+    def __call__(self, x):
+        #print(np.shape(x), np.shape(self.mu))
+        return 0.5*(x-self.mu).dot(self.inv_cov.dot(x-self.mu))
 
-def langevin_step(d, data, batch_grad_f, prior_grad_f, 
+def langevin_step(d, data, grad_f, prior_grad_f, 
                   x, step_size = 0.01):
-    grads = batch_grad_f(x, data)
+    grads = grad_f(x, data)
     gradient = np.sum(grads, axis = 0)
     g = gradient
     g_prior = prior_grad_f(x)
@@ -52,14 +69,88 @@ def langevin_step(d, data, batch_grad_f, prior_grad_f,
         np.sqrt(2*step_size)*noise
     return x #, gradients, gradient
 
-def langevin(d, data, batch_grad_f, prior_grad_f, 
-             step_size = 0.01, n_steps=100, init_pt=None):
+def langevin(d, data, grad_f, prior_grad_f, 
+             step_size = 0.01, n_steps=100, init_pt=None, time_limit=0.0):
     if init_pt is None:
         init_pt = np.zeros(d)
     x = init_pt
+    start = time.time()
     for t in range(n_steps):
-        x = langevin_step(d, data, batch_grad_f, prior_grad_f, x, step_size)
-    return x
+        x = langevin_step(d, data, grad_f, prior_grad_f, x, step_size)
+        if time_limit > 0 and time.time() - start > time_limit:
+            break
+    return x, t+1
+
+def mala_step(d, data, f, prior_f, grad_f, prior_grad_f, 
+                  x, step_size = 0.01):
+    grads = grad_f(x, data)
+    gradient = np.sum(grads, axis = 0)
+    g = gradient
+    g_prior = prior_grad_f(x)
+    g = g + g_prior
+    noise = np.random.randn(d)
+    #preconditioner_sqrt.dot(np.random.randn(self.dim)) 
+    scaled_noise = np.sqrt(2*step_size)*noise
+    z = x - step_size * g + \
+        scaled_noise
+    grads_z = grad_f(z, data)
+    gz = np.sum(grads_z, axis=0) + prior_grad_f(z)
+    valx = np.sum(f(x,data), axis=0) + prior_f(x)
+    valz = np.sum(f(z,data), axis=0) + prior_f(z)
+    p = np.exp(-valz+valx+
+               (la.norm(x-z+step_size*gz)**2-la.norm(scaled_noise)**2)/(4*step_size))
+    (samp, accept) = (z, True) if np.random.random()<p else (x, False)
+    #samp = z if np.random.random()<p else x
+    return samp, accept, min(p,1)
+
+def mala(d, data, f, prior_f, grad_f, prior_grad_f, 
+             step_size = 0.01, n_steps=100, init_pt=None, time_limit=0.0):
+    accepts = 0.0
+    if init_pt is None:
+        init_pt = np.zeros(d)
+    x = init_pt
+    start = time.time()
+    for t in range(n_steps):
+        x, accept, _ = mala_step(d, data, f, prior_f, grad_f, prior_grad_f, x, step_size)
+        if accept:
+            accepts += 1
+        if time_limit > 0 and time.time() - start > time_limit:
+            break
+    return x, accepts/(t+1), t+1
+
+def sgld_step(t, d, data, batch_grad_f, prior_grad_f, 
+                  x, step_size = 0.01, batch_size = 32):
+    if t <= batch_size:
+      sample_indices = range(t)
+      #gradient_scale = 1
+    else:
+      gradient_scale = t/batch_size
+      sample_indices = rnd.sample(range(t),batch_size)
+    sampled_data = tuple([arr[sample_indices] for arr in data])
+    #g is estimated gradient
+    grads = batch_grad_f(x, sampled_data)
+    gradient = np.sum(grads, axis = 0)
+    g = gradient
+    g_prior = prior_grad_f(x)
+    g = g + g_prior
+    noise = np.random.randn(d)
+    #preconditioner_sqrt.dot(np.random.randn(self.dim)) 
+    x = x - step_size * g + \
+        np.sqrt(2*step_size)*noise
+    return x #, gradients, gradient
+
+def sgld(t, d, data, grad_f, prior_grad_f, 
+             step_size = 0.01, n_steps=100, batch_size = 32, init_pt=None, time_limit=0.0):
+    if init_pt is None:
+        init_pt = np.zeros(d)
+    x = init_pt
+    start = time.time()
+    for t in range(n_steps):
+        x = sgld_step(t, d, data, grad_f, prior_grad_f, x, step_size, batch_size)
+        if time_limit > 0 and time.time() - start > time_limit:
+            break
+    return x, t+1
+
 
 # t : int
 # d : int
@@ -128,16 +219,19 @@ def sagald_step(t, d, gradients, gradient, data, batch_grad_f, prior_grad_f,
 def sagald(t, d, data, batch_grad_f, prior_grad_f, 
            x = None, gradients = None, gradient = None,
            batch_size = 32, step_size = 0.01, num_steps = 200,
-           max_time = 0.0):
+           time_limit = 0.0):
     if x is None:
         x = np.zeros(d)
     if gradients is None:
         gradients = batch_grad_f(x, sampled_data)
     if gradient is None:
         gradient = np.sum(gradients, axis=0)
+    start = time.time()
     for i in range(num_steps):
         (x, gradients, gradient) = \
              sagald_step(t, d, gradients, gradient, data, 
                          batch_grad_f, prior_grad_f, 
                          x, batch_size = batch_size, step_size = step_size)
-    return x, gradients, gradient
+        if time_limit > 0 and time.time() - start > time_limit:
+            break
+    return x, gradients, gradient, t+1

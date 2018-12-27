@@ -11,3 +11,4 @@ src/ts_tutorial/
 *.pickle
 log.txt
 .DS_Store
+src/data*
