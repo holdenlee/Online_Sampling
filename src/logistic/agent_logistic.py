@@ -652,11 +652,12 @@ class MalaTS(LangevinTS):
     
 class SGLDTS(LangevinTS):
     def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
-        LangevinTS.__init__(self, num_articles, dim, mu, cov=None, step_size=step_size, n_steps=n_steps, init_pt=init_pt, time=time, verbosity=verbosity, precondition=precondition)
+        LangevinTS.__init__(self, num_articles, dim, mu, cov=cov, step_size=step_size, n_steps=n_steps, init_pt=init_pt, time=time, verbosity=verbosity, precondition=precondition)
         self.batch_size = batch_size
         
     def get_sample(self):
         if self.num_plays == 0:
+            #print(len(self.mu), len(self.cov))
             self.theta = np.random.multivariate_normal(self.mu,self.cov)
             steps = 0
         else:
