@@ -557,6 +557,7 @@ class ThompsonSampler(Agent):
     self.num_plays = 0
     self.contexts = np.zeros((0,self.dim))
     self.rewards = np.asarray([]) 
+    #print(self.dim) #debug
     self.samples = np.zeros((0,self.dim))
     
   def get_sample(self):
@@ -574,12 +575,14 @@ class ThompsonSampler(Agent):
       feedback - user's response.
       '''
     self.num_plays +=1
+    #print('concat',self.contexts.shape, context[article], len(context[article]))
     self.contexts = np.append(self.contexts,[context[article]], axis=0)
     self.rewards = np.append(self.rewards, [feedback])
   
   def pick_action(self,context):
     '''Greedy action based on sample.'''
     sample = self.get_sample()
+    #print(sample, self.samples) #debug
     self.samples = np.append(self.samples, [sample], axis=0)
     sample_rewards = [evaluate_log1pexp(np.dot(sample, ctxt)) for ctxt in context]
     article = np.argmax(sample_rewards)
@@ -601,7 +604,8 @@ class LangevinTS(ThompsonSampler):
         self.n_steps = n_steps
         self.theta = init_pt
         self.precondition = precondition
-        if precondition:
+        #print('precondition', precondition)#debug
+        if precondition != False:
             self.H = npla.inv(self.cov)
             self.last_theta=self.theta
             self.last_last_theta = self.theta
@@ -622,8 +626,8 @@ class LangevinTS(ThompsonSampler):
                 self.last_theta=self.theta
             else: #refresh previous gradients
                 self.H += logistic_Hessian(self.last_theta, context) -\
-                          logistic_Hessian(self.last_last_theta, self.context[self.num_plays - tp - 1]) +\
-                          logistic_Hessian(self.last_theta, self.context[self.num_plays - tp - 1])
+                          logistic_Hessian(self.last_last_theta, self.contexts[self.num_plays - tp - 1]) +\
+                          logistic_Hessian(self.last_theta, self.contexts[self.num_plays - tp - 1])
         
 class BasicLangevinTS(LangevinTS):        
     def get_sample(self):
@@ -648,7 +652,7 @@ class MalaTS(LangevinTS):
     
 class SGLDTS(LangevinTS):
     def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
-        LangevinTS.__init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0)
+        LangevinTS.__init__(self, num_articles, dim, mu, cov=None, step_size=step_size, n_steps=n_steps, init_pt=init_pt, time=time, verbosity=verbosity, precondition=precondition)
         self.batch_size = batch_size
         
     def get_sample(self):
@@ -665,7 +669,7 @@ class SGLDTS(LangevinTS):
 
 class SAGATS(LangevinTS):
     def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
-        LangevinTS.__init__(self, num_articles, dim, mu, cov, step_size, n_steps, init_pt, time, verbosity)
+        LangevinTS.__init__(self, num_articles, dim, mu, cov, step_size, n_steps, init_pt, time, verbosity, precondition=precondition)
         self.batch_size = batch_size
         self.gradients = np.zeros((0,dim))#None
         self.gradient = np.zeros(dim) #None
@@ -683,15 +687,18 @@ class SAGATS(LangevinTS):
             steps=0
         else:
             self.theta, self.gradients, self.gradient, steps = sagald(self.num_plays, self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), gradients = self.gradients, gradient = self.gradient, batch_size = self.batch_size,
-                                  time_limit = self.time,
+                                  time_limit = self.time, H = self.H,
                                   step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
         printv(" Sample: " + repr(self.theta), self.v, 1)
         printv(" Steps taken: %d" % steps, self.v, 1)
         return self.theta
 
 class PGTS_Stream(ThompsonSampler):
-    def __init__(self, num_articles, dim, intercept=False, time=False, verbosity=0):
-        ThompsonSampler.__init__(self, num_articles, dim, time, verbosity)
+    def __init__(self, num_articles, dim, intercept=False, context_has_constant=False, time=False, n_steps=100, verbosity=0):
+        #confusing because of dim +1..
+        ThompsonSampler.__init__(self, num_articles, dim+(1 if intercept else 0), time, verbosity)
+        self.dim=dim
+        self.contexts = np.zeros((0,dim))
         """
         self.contexts = np.zeros((0,self.dim))
         self.rewards = np.asarray([]) 
@@ -709,9 +716,16 @@ class PGTS_Stream(ThompsonSampler):
         #self.draw_int = np.zeros(1) # Intercept drawn in this trial
         # Regression object - keeps track of drawn_coeffs and draw_int from last trial
         self.reg = BernoulliRegression(1, self.dim)
+        self.n_steps = n_steps
+        self.context_has_constant = context_has_constant
     
     def update_theta(self):
-        self.theta = append(self.draw_coeffs, self.draw_int)
+        self.theta = np.append(self.draw_int, self.draw_coeffs)
+    
+    def update_observation(self, context, article, feedback):
+        if self.context_has_constant:
+            context = np.asarray(context)[:,1:] #ignore constant entry
+        super(PGTS_Stream, self).update_observation(context, article, feedback)
     
     def get_sample(self):
         if self.num_plays == 0:
@@ -729,13 +743,21 @@ class PGTS_Stream(ThompsonSampler):
             #X = self.contexts
             #Y = np.transpose([self.rewards])
             #self.reg.resample((X,Y))
-            self.reg.resample((self.contexts,np.transpose([self.rewards])))
+            X = self.contexts
+            Y = np.transpose([self.rewards])
+            start = time.time()
+            for i in range(self.n_steps):
+                #print(self.dim, X.shape, Y.shape)
+                self.reg.resample((X,Y))
+                if self.time > 0 and time.time() - start > self.time:
+                    break
             self.draw_coeffs = self.reg.A[0]
             if self.intercept:
                 self.draw_int = self.reg.b
                 self.update_theta()
             else:
                 self.theta = self.draw_coeffs
+            printv(" Steps taken: %d" % (i+1), self.v, 1)
         printv(" Sample: " + repr(self.theta), self.v, 1)
         return self.theta
 
