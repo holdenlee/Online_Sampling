@@ -295,6 +295,12 @@ class LaplaceTSLogisticBandit(GreedyLogisticBandit):
       x = context[i]
       sampled_rewards.append(1/(1+np.exp(-theta.dot(x))))
     return sampled_rewards
+
+  def get_sample(self):
+    mean = self.current_map_estimate #s[i]
+    cov = npla.inv(self.current_Hessian) #s[i])
+    theta = np.random.multivariate_normal(mean, cov)
+    return theta
     
   def pick_action(self,context):
     '''Greedy action based on map estimates.'''
