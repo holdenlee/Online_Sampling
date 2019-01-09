@@ -12,3 +12,4 @@ src/ts_tutorial/
 log.txt
 .DS_Store
 src/data*
+outputs/*
