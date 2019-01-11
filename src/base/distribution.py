@@ -32,7 +32,8 @@ class BernoulliDist(Distribution):
         return np.random.binomial(1,self.p,self.dim)
 
 class DistributionWithConstant(Distribution):
-    def __init__(self,dist):
+    def __init__(self,dist,const=1):
         self.dist = dist
+        self.const = const
     def __call__(self):
-        return np.append([1], self.dist())
+        return np.append([self.const], self.dist())

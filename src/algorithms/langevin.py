@@ -118,7 +118,7 @@ def mala_step(d, data, f, prior_f, grad_f, prior_grad_f,
     valx = np.sum(f(x,data), axis=0) + prior_f(x)
     valz = np.sum(f(z,data), axis=0) + prior_f(z)
     p = np.exp(-valz+valx+
-               (la.norm(x-z+step_size*gz)**2-la.norm(scaled_noise)**2)/(4*step_size))
+               (la.norm(x-z-step_size*gz)**2)/(4*step_size)-la.norm(noise)**2/2)
     (samp, accept) = (z, True) if np.random.random()<p else (x, False)
     #samp = z if np.random.random()<p else x
     return samp, accept, min(p,1)

@@ -65,3 +65,14 @@ class LogisticBandit(Environment):
     stochastic_reward = self.stochastic_rewards[article]
     return stochastic_reward
 
+class FixedLogisticBandit(LogisticBandit):
+  def __init__(self,num_articles,dim,theta_dist=None,arm_dist=None,seed=None,verbosity=0):
+    LogisticBandit.__init__( self,num_articles,dim,theta_dist=theta_dist,arm_dist=arm_dist,seed=seed,verbosity=verbosity)
+    self.context_vectors = [self.arm_dist() for _ in range(self.num_articles)]
+  def get_observation(self):
+    '''generates context vector and computes the true
+    reward of each article.'''
+    for i in range(self.num_articles):
+      self.current_rewards[i] = 1/(1+np.exp(-self.theta.dot(self.context_vectors[i])))
+      self.stochastic_rewards[i] = np.random.binomial(1,self.current_rewards[i])
+    return self.context_vectors
