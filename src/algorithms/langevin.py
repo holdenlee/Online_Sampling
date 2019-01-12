@@ -17,14 +17,17 @@ def evaluate_log1pexp(x):
     else:
       return np.log(1+np.exp(x))
     """
+    
+def evaluate_logistic(m):
+    return np.piecewise(m, [m>_LARGE_NUMBER], [lambda x: 0, lambda x: 1/(1+np.exp(-x))])
 
 # x : R^d
 # data = (contexts : (R^d)^T, rewards : (R^d)^T)
 def logistic_grad_f(x, data):
     zs = data[0]
     ys = data[1]
-    m = -x.dot(zs.T)
-    preds = np.piecewise(m, [m>_LARGE_NUMBER], [lambda x: 0, lambda x: 1/(1+np.exp(x))])
+    m = x.dot(zs.T)
+    preds = evaluate_logistic(m)
     #preds = 1/(1+np.exp(-x.dot(zs.T)))
     #print(np.shape(preds), np.shape(ys), np.shape(zs))
     grads = np.diag(preds - ys).dot(zs)

@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import scipy
 import numpy.linalg as npla
 import scipy.linalg as spla
 import random as rnd
@@ -398,6 +399,8 @@ class LangevinTSLogisticBandit(GreedyLogisticBandit):
     printv("(pick_action, %s) Time Elapsed: %f" % (type(self).__name__, end - start), self.v, 2)
     return article
  
+#old implementations
+"""    
 class SAGALDTSLogisticBandit(LangevinTSLogisticBandit):
   def _compute_stochastic_gradient(self, x):
     '''computes a stochastic gradient of the negative log-posterior for the given
@@ -536,7 +539,7 @@ class OSAGALDTSLogisticBandit(LangevinTSLogisticBandit):
     g_prior,_ = self._compute_gradient_hessian_prior(x)
     g = g + g_prior
     return g  
-
+"""
 ##################################### 12/25
 class DefaultAgent(Agent):
     def __init__(self,dim):
@@ -597,6 +600,39 @@ class ThompsonSampler(Agent):
     #  print("(pick_action, %s) Time Elapsed: %f" % (end - start))
     return article
 
+#diagonal matrix version
+class OnlineDiagLaplaceTS(ThompsonSampler):
+    def __init__(self,num_articles,dim,mu,cov=None,init_pt=None,time=False,verbosity=0):
+        ThompsonSampler.__init__(self,num_articles,dim,time,verbosity)
+        self.mu = np.asarray(mu)
+        self.cov = cov if cov is not None else np.eye(dim)
+        #self.H = 0.5*npla.inv(self.cov)
+        self.est_inv_vars = np.diagonal(npla.inv(self.cov))
+        self.theta = np.asarray(init_pt) if init_pt is not None else self.mu
+        self.est_coeffs = self.mu
+    def update_observation(self,context,article,feedback):
+        ThompsonSampler.update_observation(self,context,article,feedback)
+        art_ctxt = np.asarray(context[article])
+        def obj(w):
+            #why are we doing a diag approx??
+            #print(self.est_inv_vars, w, self.est_coeffs)
+            t1 = 0.5*self.est_inv_vars.dot(np.square(w-self.est_coeffs))
+                #(w-self.est_coeffs).dot(self.H.dot(w-self.est_coeffs))
+            #print(type(self.theta), type(art_ctxt))
+            t2 = evaluate_log1pexp(-((2*feedback-1)*w.dot(art_ctxt)))
+            #t2 = math.log(1+math.exp(-(self.trans_reward(self.rewards[trial])*w.dot(m_chosen_arm))))
+            #print((t1+t2).shape)
+            return t1+t2
+        #print(self.est_coeffs.shape)
+        self.est_coeffs = scipy.optimize.minimize(obj,self.est_coeffs,method='BFGS').x
+        #self.est_coeffs = w
+        p = evaluate_logistic(self.est_coeffs.dot(art_ctxt))
+        #print(self.est_inv_vars.shape, (np.square(art_ctxt)*p*(1-p)).shape)
+        self.est_inv_vars = self.est_inv_vars + np.square(art_ctxt)*p*(1-p)
+            #art_ctxt.dot(art_ctxt)*p*(1-p)
+    def get_sample(self):
+        return np.random.normal(self.est_coeffs,np.sqrt(1/self.est_inv_vars))
+    
 def round_down_to_power_2(n):
     return 2**(int(math.log(n,2))) if n>0 else 0
 
@@ -612,16 +648,18 @@ class LangevinTS(ThompsonSampler):
         self.precondition = precondition
         #print('precondition', precondition)#debug
         if precondition != False:
-            self.H = npla.inv(self.cov)
+            self.H = 0.5*npla.inv(self.cov)
             self.last_theta=self.theta
             self.last_last_theta = self.theta
+            self.last_theta_t = 0
+            self.last_last_theta_t = 0
         else:
             self.H = None
         
     def update_observation(self, context, article, feedback):
         super(LangevinTS, self).update_observation(context, article, feedback)
         if self.precondition == 'full':
-            self.H = npla.inv(self.cov) + logistic_Hessian(self.theta, self.contexts)
+            self.H = 0.5*npla.inv(self.cov) + logistic_Hessian(self.theta, self.contexts)
         elif self.precondition == 'cum': #cumulative
             self.H += logistic_Hessian(self.theta, context)
         elif self.precondition == 'proper':
@@ -629,8 +667,15 @@ class LangevinTS(ThompsonSampler):
             if self.num_plays == tp:
                 self.H += logistic_Hessian(self.theta, context)
                 self.last_last_theta = self.last_theta
+                self.last_last_theta_t = self.last_theta_t
                 self.last_theta=self.theta
+                self.last_theta_t=self.num_plays
+                self.H += logistic_Hessian(self.last_theta, context)
+                print("+", (self.last_theta_t, self.num_plays))
             else: #refresh previous gradients
+                print("+", (self.last_theta_t, self.num_plays), 
+                      (self.last_theta_t, self.num_plays-tp))
+                print("-", (self.last_last_theta_t,self.num_plays-tp))
                 self.H += logistic_Hessian(self.last_theta, context) -\
                           logistic_Hessian(self.last_last_theta, self.contexts[self.num_plays - tp - 1]) +\
                           logistic_Hessian(self.last_theta, self.contexts[self.num_plays - tp - 1])
