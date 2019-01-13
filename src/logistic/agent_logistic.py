@@ -11,6 +11,7 @@ import random as rnd
 from pypolyagamma import BernoulliRegression, logistic
 
 from algorithms.langevin import *
+from algorithms.sampler import *
 from base.agent import Agent
 #from base.distribution import *
 from base.timing import *
@@ -671,11 +672,11 @@ class LangevinTS(ThompsonSampler):
                 self.last_theta=self.theta
                 self.last_theta_t=self.num_plays
                 self.H += logistic_Hessian(self.last_theta, context)
-                print("+", (self.last_theta_t, self.num_plays))
+                #print("+", (self.last_theta_t, self.num_plays))
             else: #refresh previous gradients
-                print("+", (self.last_theta_t, self.num_plays), 
-                      (self.last_theta_t, self.num_plays-tp))
-                print("-", (self.last_last_theta_t,self.num_plays-tp))
+                #print("+", (self.last_theta_t, self.num_plays), 
+                #      (self.last_theta_t, self.num_plays-tp))
+                #print("-", (self.last_last_theta_t,self.num_plays-tp))
                 self.H += logistic_Hessian(self.last_theta, context) -\
                           logistic_Hessian(self.last_last_theta, self.contexts[self.num_plays - tp - 1]) +\
                           logistic_Hessian(self.last_theta, self.contexts[self.num_plays - tp - 1])
@@ -720,14 +721,27 @@ class SGLDTS(LangevinTS):
         return self.theta
 
 class SAGATS(LangevinTS):
-    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False):
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, batch_size = 32, init_pt=None, time=0, verbosity=0, precondition=False, weights=False):
         LangevinTS.__init__(self, num_articles, dim, mu, cov, step_size, n_steps, init_pt, time, verbosity, precondition=precondition)
         self.batch_size = batch_size
         self.gradients = np.zeros((0,dim))#None
         self.gradient = np.zeros(dim) #None
+        self.weights = RandomWeights() if weights else None
+        self.prevHinv = cov if cov is not None else np.eye(dim)
     
     def update_observation(self, context, article, feedback):
         super(SAGATS, self).update_observation(context, article, feedback)
+        #update weights
+        if self.weights is not None:
+            tp = round_down_to_power_2(self.num_plays)
+            if self.num_plays == tp:
+                self.prevHinv = npla.inv(self.H)
+            #todo: for efficiency, should compute inverse only once
+            def f(x):
+                return npla.norm(self.prevHinv.dot(x))/npla.norm(x)
+            self.weights.add(f(logistic_grad_f(self.theta, (np.asarray([context[article]]), [feedback]))[0]))
+            self.weights.adjust(self.num_plays - tp - 1, f(logistic_grad_f(self.theta, (np.asarray([self.contexts[self.num_plays - tp - 1]]), [self.rewards[self.num_plays - tp - 1]]))[0]))
+            printv(self.weights, self.v,2)
         new_gradient = logistic_grad_f(self.theta, (np.asarray([context[article]]), [feedback]))
         #print(self.gradients, new_gradient)
         self.gradients = np.append(self.gradients, new_gradient, axis=0)

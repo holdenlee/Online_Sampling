@@ -193,14 +193,16 @@ def sgld(t, d, data, grad_f, prior_grad_f,
 # batch_size : int
 # step_size : float
 def sagald_step(t, d, gradients, gradient, data, batch_grad_f, prior_grad_f, 
-                x, batch_size = 32, step_size = 0.01, Hinv=None):
+                x, batch_size = 32, step_size = 0.01, Hinv=None, weights = None):
     #print("1: ",t,batch_size)#debug
     if t <= batch_size:
-      sample_indices = range(t)
-      #gradient_scale = 1
+        sample_indices = range(t)
+        #gradient_scale = 1
     else:
-      gradient_scale = t/batch_size
-      sample_indices = rnd.sample(range(t),batch_size)
+        sample_indices = rnd.sample(range(t),batch_size) if weights is None else weights.sample_w_replacement(batch_size)
+            #changed to sample with replacement, in order for importance sampling to work.
+        #warning: this can be different types
+        gradient_scale = t/batch_size if weights is None else (1.0/batch_size)*np.asarray([1.0/(weights[i]) for i in sample_indices])
     #print(sample_indices)#debug
     
     old_gradients = gradients[sample_indices]
@@ -221,9 +223,14 @@ def sagald_step(t, d, gradients, gradient, data, batch_grad_f, prior_grad_f,
         old_grad_sum = np.sum(gradients[sample_indices], axis=0)
         gradients[sample_indices] = grads #this mutates gradients!
         new_grad_sum = np.sum(grads, axis = 0)
-        g = gradient + gradient_scale * (new_grad_sum - old_grad_sum) #variance-reduced gradient
+        if weights is None:
+            g = gradient + gradient_scale * (new_grad_sum - old_grad_sum) #variance-reduced gradient
+            gradient = gradient + (new_grad_sum - old_grad_sum) 
+        else:
+            wt_grad_diff = np.sum(gradient_scale * (gradients[sample_indices] - grads), axis=0)
+            g = gradient + wt_grad_diff
         gradient = gradient + (new_grad_sum - old_grad_sum) 
-            #warning, this doesn't mutate, need to do it in the calling method
+        #warning, this doesn't mutate, need to do it in the calling method
     g_prior = prior_grad_f(x)
     #print(np.shape(g),np.shape(g_prior),'grad_shape')
     g = g + g_prior
@@ -257,7 +264,8 @@ def sagald(t, d, data, batch_grad_f, prior_grad_f,
            batch_size = 32, step_size = 0.01, n_steps = 200,
            init_pt = None,
            H = None,
-           time_limit = 0.0):
+           time_limit = 0.0,
+           weights = None):
     x = init_pt
     if x is None:
         x = np.zeros(d)
@@ -271,7 +279,7 @@ def sagald(t, d, data, batch_grad_f, prior_grad_f,
         (x, gradients, gradient) = \
              sagald_step(t, d, gradients, gradient, data, 
                          batch_grad_f, prior_grad_f, 
-                         x, batch_size = batch_size, step_size = step_size, Hinv=Hinv)
+                         x, batch_size = batch_size, step_size = step_size, Hinv=Hinv, weights = weights)
         if time_limit > 0 and time.time() - start > time_limit:
             break
     return x, gradients, gradient, i+1

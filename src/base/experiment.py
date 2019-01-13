@@ -231,10 +231,11 @@ class ExperimentMultipleAgents(BaseExperiment):
     
 ##########
 
+# force : force everyone to take the action of the first agent. Purpose is to compare how well the different samplers do on the same data.
 class ExperimentCompare(BaseExperiment):
     
   def __init__(self, agents, environment, n_steps,
-               seed=0, rec_freq=1, unique_id='NULL', verbosity=0):
+               seed=0, rec_freq=1, unique_id='NULL', verbosity=0, force=False):
     """Setting up the experiment.
 
     Note that unique_id should be used to identify the job later for analysis.
@@ -254,6 +255,7 @@ class ExperimentCompare(BaseExperiment):
     # override
     self.cum_regret = [0 for _ in agents]
     self.v = verbosity
+    self.force = force
 
   def run_step_maybe_log(self, t):
     # Evolve the bandit (potentially contextual) for one step and pick action
@@ -273,7 +275,10 @@ class ExperimentCompare(BaseExperiment):
         agent = self.agents[i]
         start = time.time()
         # AGENT PICKS ACTION
-        action = agent.pick_action(observation)
+        if i==0 or not self.force:
+            action = agent.pick_action(observation)
+        else:
+            agent.pick_action(observation)
         reward = self.environment.get_stochastic_reward(action)
         expected_reward = self.environment.get_expected_reward(action)
         # AGENT UPDATES
@@ -310,5 +315,3 @@ class ExperimentCompare(BaseExperiment):
 
     self.results = pd.DataFrame(self.results)
     
-
-
