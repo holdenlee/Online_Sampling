@@ -291,7 +291,7 @@ class LaplaceTSLogisticBandit(GreedyLogisticBandit):
     mean = self.current_map_estimate #s[i]
     cov = npla.inv(self.current_Hessian) #s[i])
     theta = np.random.multivariate_normal(mean, cov)
-    printv(" Laplace sample: "+repr(theta), self.v, 1)
+    printv(" Laplace sample: "+repr(theta), self.v, 2)
     self.samples = np.append(self.samples, theta)
     for i in range(self.num_articles):
       x = context[i]
@@ -671,7 +671,7 @@ class LangevinTS(ThompsonSampler):
                 self.last_last_theta_t = self.last_theta_t
                 self.last_theta=self.theta
                 self.last_theta_t=self.num_plays
-                self.H += logistic_Hessian(self.last_theta, context)
+                #self.H += logistic_Hessian(self.last_theta, context)
                 #print("+", (self.last_theta_t, self.num_plays))
             else: #refresh previous gradients
                 #print("+", (self.last_theta_t, self.num_plays), 
@@ -686,8 +686,9 @@ class BasicLangevinTS(LangevinTS):
         self.theta, steps = langevin(self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
                               time_limit = self.time,
                               step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
-        printv(" Sample: " + repr(self.theta), self.v, 1)
+        printv(" Sample: " + repr(self.theta), self.v, 2)
         printv(" Steps taken: %d" % steps, self.v, 1)
+        self.steps_taken = steps
         return self.theta
     
 class MalaTS(LangevinTS):        
@@ -697,9 +698,10 @@ class MalaTS(LangevinTS):
                                         logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
                                         time_limit=self.time,
                                         step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
-        printv(" Sample: " + repr(self.theta), self.v, 1)
+        printv(" Sample: " + repr(self.theta), self.v, 2)
         printv(" Accept proportion: %f" % self.accepts, self.v, 1)
         printv(" Steps taken: %d" % steps, self.v, 1)
+        self.steps_taken = steps
         return self.theta
     
 class SGLDTS(LangevinTS):
@@ -716,8 +718,9 @@ class SGLDTS(LangevinTS):
             self.theta, steps = sgld(self.num_plays, self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), batch_size = self.batch_size,
                               time_limit = self.time,
                               step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
-        printv(" Sample: " + repr(self.theta), self.v, 1)
+        printv(" Sample: " + repr(self.theta), self.v, 2)
         printv(" Steps taken: %d" % steps, self.v, 1)
+        self.steps_taken = steps
         return self.theta
 
 class SAGATS(LangevinTS):
@@ -755,8 +758,9 @@ class SAGATS(LangevinTS):
             self.theta, self.gradients, self.gradient, steps = sagald(self.num_plays, self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), gradients = self.gradients, gradient = self.gradient, batch_size = self.batch_size,
                                   time_limit = self.time, H = self.H,
                                   step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
-        printv(" Sample: " + repr(self.theta), self.v, 1)
+        printv(" Sample: " + repr(self.theta), self.v, 2)
         printv(" Steps taken: %d" % steps, self.v, 1)
+        self.steps_taken = steps
         return self.theta
 
 class PGTS_Stream(ThompsonSampler):
@@ -824,7 +828,8 @@ class PGTS_Stream(ThompsonSampler):
             else:
                 self.theta = self.draw_coeffs
             printv(" Steps taken: %d" % (i+1), self.v, 1)
-        printv(" Sample: " + repr(self.theta), self.v, 1)
+            self.steps_taken = i+1
+        printv(" Sample: " + repr(self.theta), self.v, 2)
         return self.theta
 
 """

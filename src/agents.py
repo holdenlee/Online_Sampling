@@ -20,6 +20,8 @@ import pickle
 #import pandas as pd
 #import plotnine as gg
 
+
+"""
 num_articles = 1
 dim = 20
 dim1 = dim+1
@@ -29,80 +31,99 @@ theta_std = 1
 #time_limit= 0.1
 T=1000
 verbosity=1
+"""
 
 # Use default settings for Laplace agent for now (would be nice to tune this too). Not time-restricted.
-
-epsilon1 = 0.01
-epsilon2 = 0.05
-alpha=0.2
-beta=0.5
-tol=0.0001
-make_laplace_agent = lambda: LaplaceTSLogisticBandit(num_articles, dim1, theta_mean, theta_std, epsilon1,
-                                                      alpha,beta,tol, verbosity=verbosity)
-
-## Online version
-
-make_online_laplace_agent = lambda: OnlineDiagLaplaceTS(num_articles,dim1, [0]*dim1,
-                                                        cov=None,init_pt=None,time=False,verbosity=0)
-
-# PG-TS has no parameters to tune
-
-make_pgts_agent = lambda t: PGTS_Stream(num_articles, dim, intercept=True, context_has_constant=True, 
-                                      n_steps=9999, time = t, verbosity=verbosity)
-#self, num_articles, dim, intercept=False, context_has_constant=False, time=False, n_steps=100, verbosity=0
-
-# Langevin-based
-
-make_mala_agent = lambda t: MalaTS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                 step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
-                                 time = t,
-                                     init_pt=None, verbosity=verbosity)
-
-## Untimed MALA agent is used as baseline.
-## I don't know whether I should use 1+t or 1+\sqrt{sparsity/dim}*t
-
-make_mala_agent_untimed = lambda s: MalaTS(num_articles, dim1, [0]*dim1, cov=None, 
-                                         step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=s,
+def make_agent(agent_name, num_articles, dim, sparsity, t, verbosity=1, batch_size=64, bias_term=True):
+    dim1 = dim+1 if bias_term else dim
+    theta_mean = 0
+    theta_std = 1
+    epsilon1 = 0.01
+    epsilon2 = 0.05
+    alpha=0.2
+    beta=0.5
+    tol=0.0001
+    if agent_name == "laplace":
+        return LaplaceTSLogisticBandit(num_articles, dim1, theta_mean, theta_std, epsilon1,
+                                                          alpha,beta,tol, verbosity=verbosity)
+    elif agent_name == "online_laplace":
+        ## Online version
+        return OnlineDiagLaplaceTS(num_articles,dim1, [0]*dim1,
+                                                            cov=None,init_pt=None,time=False,verbosity=verbosity)
+    elif agent_name == "pg":
+        # PG-TS has no parameters to tune
+        return PGTS_Stream(num_articles, dim, intercept=bias_term, context_has_constant=bias_term, 
+                                          n_steps=9999, time = t, verbosity=verbosity)
+    elif agent_name == "mala":
+        #self, num_articles, dim, intercept=False, context_has_constant=False, time=False, n_steps=100, verbosity=0
+        # Langevin-based
+        return MalaTS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                     step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
+                                     time = t,
                                          init_pt=None, verbosity=verbosity)
-
-## With stochastic gradients
-
-
-make_sgld_agent = lambda t: SGLDTS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                        step_size=lambda t: 0.01/(1 + t * np.sqrt(sparsity/dim)),
-                                        batch_size = 64,
-                                        time=t,
-                                        n_steps=9999,
-                                        init_pt=None, verbosity=verbosity)
-make_sagald_agent = lambda t: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                          step_size=lambda t: 0.05/(1 + t * np.sqrt(sparsity/dim)),
-                                          batch_size = 64,
-                                          time=t,
-                                          n_steps=9999,
-                                          init_pt=None, verbosity=verbosity)
-make_langevin_agent = lambda t: BasicLangevinTS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                              step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
-                                              time = t,
+    elif agent_name == "mala_untimed":
+        ## Untimed MALA agent is used as baseline.
+        ## I don't know whether I should use 1+t or 1+\sqrt{sparsity/dim}*t
+        return MalaTS(num_articles, dim1, [0]*dim1, cov=None, 
+                                             step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=500,
+                                             init_pt=None, verbosity=verbosity)
+    elif agent_name == "sgld":
+        ## With stochastic gradients
+        return SGLDTS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                            step_size=lambda t: 0.01/(1 + t * np.sqrt(sparsity/dim)),
+                                            batch_size = batch_size,
+                                            time=t,
+                                            n_steps=9999,
+                                            init_pt=None, verbosity=verbosity)
+    elif agent_name == "sagald":
+        return SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                              step_size=lambda t: 0.05/(1 + t * np.sqrt(sparsity/dim)),
+                                              batch_size = batch_size,
+                                              time=t,
+                                              n_steps=9999,
                                               init_pt=None, verbosity=verbosity)
+    elif agent_name == "langevin":
+        return BasicLangevinTS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                                  step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
+                                                  time = t,
+                                                  init_pt=None, verbosity=verbosity)
+    elif agent_name == "prec_sagald_nowt":
+        return SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                              step_size=lambda t: 0.05,
+                                              batch_size = batch_size,
+                                              time=t,
+                                              n_steps=9999,
+                                              precondition='proper',
+                                              init_pt=None, verbosity=verbosity, weights=False)
+    elif agent_name == "prec_sagald":
+        return SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                              step_size=lambda t: 0.05,
+                                              batch_size = batch_size,
+                                              time=t,
+                                              n_steps=9999,
+                                              precondition='proper',
+                                              init_pt=None, verbosity=verbosity, weights=True)
+    elif agent_name == "prec_sagald_cum":
+        make_prec_cum_sagald_agent = lambda: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                              step_size=lambda t: 0.05,
+                                              batch_size = batch_size,
+                                              time=t,
+                                              n_steps=9999,
+                                              precondition='cum',
+                                              init_pt=None, verbosity=verbosity)
+    else:
+        return None
 
-make_prec_sagald_agent_nowt = lambda t: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                          step_size=lambda t: 0.05,
-                                          batch_size = 64,
-                                          time=t,
-                                          n_steps=9999,
-                                          precondition='proper',
-                                          init_pt=None, verbosity=verbosity, weights=False)
-make_prec_sagald_agent = lambda t: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                          step_size=lambda t: 0.05,
-                                          batch_size = 64,
-                                          time=t,
-                                          n_steps=9999,
-                                          precondition='proper',
-                                          init_pt=None, verbosity=verbosity, weights=True)
-make_prec_cum_sagald_agent = lambda t: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
-                                          step_size=lambda t: 0.05,
-                                          batch_size = 64,
-                                          time=t,
-                                          n_steps=9999,
-                                          precondition='cum',
-                                          init_pt=None, verbosity=verbosity)
+def make_agents(agent_names, num_articles, dim, sparsity, t, verbosity=1, batch_size=64, bias_term=True):
+    return [make_agent(name, num_articles, dim, sparsity, t, verbosity=verbosity, batch_size=batch_size, bias_term=bias_term) for name in agent_names]
+
+def make_default_agents(num_articles, dim, sparsity, t, verbosity=1, batch_size=64, bias_term=True):
+    return make_agents(['mala',
+                        'laplace',
+                        'online_laplace',
+                        'pg',
+                        'langevin',
+                        'sgld',
+                        'sagald',
+                        'prec_sagald_nowt',
+                        'prec_sagald'], num_articles, dim, sparsity, t, verbosity=verbosity, batch_size=batch_size, bias_term=bias_term)

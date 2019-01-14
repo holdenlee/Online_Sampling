@@ -32,24 +32,21 @@ if __name__=='__main__':
     T=int(sys.argv[2])
     name=sys.argv[3]
     seed=int(sys.argv[4])
-    agents = [make_laplace_agent(),
-          make_online_laplace_agent(),
-          make_pgts_agent(time),
-          make_langevin_agent(time),
-          make_mala_agent(time),
-          make_sgld_agent(time),
-          make_sagald_agent(time), #6
-          make_prec_sagald_agent_nowt(time), #7
-          make_prec_sagald_agent(time)] #8
+    num_articles = 1
+    dim = 20
+    sparsity = 5.0
+    verbosity=1
+    batch_size = 64
+    agents = make_default_agents(num_articles, dim, sparsity, time, verbosity=verbosity, batch_size=batch_size)
     """agents = [make_mala_agent(),
           make_laplace_agent(),
           make_pgts_agent(),
           make_langevin_agent(),
           make_sagald_agent()]"""
-    simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=1)
-    agents_info = [(agents[0].current_map_estimate, agents[0].current_Hessian),
-                   (agents[1].est_coeffs, agents[1].est_inv_vars),
-                   agents[2].theta,
+    results = simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=1)
+    agents_info = [agents[0].theta,
+                   (agents[1].current_map_estimate, agents[1].current_Hessian),
+                   (agents[2].est_coeffs, agents[2].est_inv_vars),
                    agents[3].theta,
                    agents[4].theta,
                    agents[5].theta,
@@ -57,10 +54,10 @@ if __name__=='__main__':
                    (agents[7].theta, agents[7].gradient, agents[7].gradients),
                    (agents[8].theta, agents[8].gradient, agents[8].gradients, agents[8].weights)]
     pickle.dump(agents_info, open('%s_agents.p' % name,'wb'))
-    data = (agents[4].contexts,agents[4].rewards)
+    data = (agents[0].contexts,agents[0].rewards)
     pickle.dump(data, open('%s_data.p' % name,'wb'))        
     samples_list = []
-    agent0 = copy.deepcopy(agents[4])
+    agent0 = copy.deepcopy(agents[0])
     agent0.v=1
     agent0.time=0
     agent0.n_steps= 500

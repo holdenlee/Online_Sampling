@@ -3,6 +3,7 @@ import numpy.linalg as la
 import scipy.linalg as spla
 import random as rnd
 import time
+from utils import *
 
 #https://github.com/b2du/LangevinTS/blob/master/code/SAGALD.py
 
@@ -202,25 +203,36 @@ def sagald_step(t, d, gradients, gradient, data, batch_grad_f, prior_grad_f,
         sample_indices = rnd.sample(range(t),batch_size) if weights is None else weights.sample_w_replacement(batch_size)
             #changed to sample with replacement, in order for importance sampling to work.
         #warning: this can be different types
-        gradient_scale = t/batch_size if weights is None else (1.0/batch_size)*np.asarray([1.0/(weights[i]) for i in sample_indices])
+        gradient_scale = float(t)/batch_size if weights is None else (1.0/batch_size)*np.asarray([1.0/(weights[i]) for i in sample_indices])
+        #NEED TO FLOAT!!
+        #print(gradient_scale)
     #print(sample_indices)#debug
     
-    old_gradients = gradients[sample_indices]
-    sampled_data = tuple([arr[sample_indices] for arr in data])
+    #old_gradients = gradients[sample_indices]
+    #sampled_data = tuple([arr[sample_indices] for arr in data])
     # ex. this is (zs, ys)
-    #zs = self.contexts[sample_indices] # .T
-    #ys = self.rewards[sample_indices]
+    ##zs = self.contexts[sample_indices] # .T
+    ##ys = self.rewards[sample_indices]
     #to generalize to tuple of arrays OR array,
     #if isinstance(data, np.ndarray)
     
     #g is estimated gradient
-    grads = batch_grad_f(x, sampled_data)
+    #grads = batch_grad_f(x, sampled_data)
     if t <= batch_size:
-        gradients[sample_indices] = grads
-        gradient = np.sum(grads, axis = 0)
+        gradients = batch_grad_f(x,data)
+        gradient = np.sum(gradients,axis=0)
+        #gradients[sample_indices] = grads
+        #gradient = np.sum(grads, axis = 0)
         g = gradient
     else:
+        old_gradients = gradients[sample_indices]
+        sampled_data = tuple([arr[sample_indices] for arr in data])
+        grads = batch_grad_f(x, sampled_data)
+
         old_grad_sum = np.sum(gradients[sample_indices], axis=0)
+        if weights is not None:
+            unique_indices = uniques(sample_indices)
+            old_grad_sum_u = np.sum(gradients[unique_indices], axis=0)
         gradients[sample_indices] = grads #this mutates gradients!
         new_grad_sum = np.sum(grads, axis = 0)
         if weights is None:
@@ -229,7 +241,10 @@ def sagald_step(t, d, gradients, gradient, data, batch_grad_f, prior_grad_f,
         else:
             wt_grad_diff = np.sum(gradient_scale * (gradients[sample_indices] - grads), axis=0)
             g = gradient + wt_grad_diff
-        gradient = gradient + (new_grad_sum - old_grad_sum) 
+            new_grad_sum_u = np.sum(batch_grad_f(x,tuple([arr[unique_indices] for arr in data]))) 
+                #inefficient because I'm doing this eval twice... would be more efficient to remember which indices were the first
+                #occurrences and slice those
+            gradient = gradient + (new_grad_sum_u - old_grad_sum_u) 
         #warning, this doesn't mutate, need to do it in the calling method
     g_prior = prior_grad_f(x)
     #print(np.shape(g),np.shape(g_prior),'grad_shape')

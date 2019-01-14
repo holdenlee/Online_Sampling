@@ -104,9 +104,10 @@ def redraw_samples_for_agents(agents, num, verbosity=1):
     samples_list = np.asarray(samples_list)
     return samples_list
 
-def simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=0, verbosity=0, force=False, graph=False):
+def simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=0, verbosity=0, force=False, graph=False, dist_type='Bernoulli'):
     #env = FixedLogisticBandit(num_articles, dim, DistributionWithConstant(NormalDist(0,1,dim=dim-1),-2.5), DistributionWithConstant(BernoulliDist(5.0/(dim-1),dim-1)), seed=seed)
-    env = LogisticBandit(num_articles, dim+1, NormalDist(0,1,dim=dim+1), DistributionWithConstant(BernoulliDist(sparsity/dim,dim)), seed=seed)
+    env = LogisticBandit(num_articles, dim+1, NormalDist(0,1,dim=dim+1), DistributionWithConstant(BernoulliDist(sparsity/dim,dim)), seed=seed) if dist_type=='Bernoulli' else LogisticBandit(num_articles, dim, NormalDist(0,1,dim=dim), (NormalDist(0,sparsity,dim=dim)), seed=seed) #'Normal'
+    #sparsity is var in the second case. #rn, Bernoulli is no-bias.
     experiment = ExperimentCompare(agents, env, n_steps,
                    seed=seed, verbosity=verbosity, force=force)
     experiment.run_experiment()
@@ -117,13 +118,13 @@ def simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=0, verbosi
     #    plot_results(results)
     return results, cum_regrets
 
-def simple_compares(make_agents, num_articles, dim, sparsity, n_steps, seeds, verbosity=0, graph=False):
+def simple_compares(make_agents, num_articles, dim, sparsity, n_steps, seeds, verbosity=0, graph=False, dist_type='Bernoulli'):
     results_list = []
     cum_regrets_list = []
     avg_regrets = np.zeros(len(make_agents))
     for seed in seeds:
         agents = [make_agent() for make_agent in make_agents]
-        results, cum_regrets = simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=seed, verbosity=verbosity, graph=graph)
+        results, cum_regrets = simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=seed, verbosity=verbosity, graph=graph, dist_type=dist_type)
         results_list += [results]
         cum_regrets_list += [cum_regrets]
         avg_regrets += cum_regrets

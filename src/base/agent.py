@@ -25,6 +25,7 @@ class Agent(object):
     """Initialize the agent."""
     self.time = time
     self.v = verbosity
+    self.steps_taken = 0
 
   def update_observation(self, observation, action, reward):
     """Add an observation to the records."""

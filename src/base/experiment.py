@@ -282,18 +282,20 @@ class ExperimentCompare(BaseExperiment):
         reward = self.environment.get_stochastic_reward(action)
         expected_reward = self.environment.get_expected_reward(action)
         # AGENT UPDATES
-        agent.update_observation(observation, action, reward)
+        agent.update_observation(observation, action, reward) #this should cut into the time of the next time step...
         end = time.time()
         # Log whatever we need for the plots we will want to use.
         # ??? Should we compare to expected reward ???
         instant_regret = optimal_reward - expected_reward
         # Need to change to store for each
         self.cum_regret[i] += instant_regret
+        printv(' Cum regret: %f' % self.cum_regret[i], self.v, 1)
         if (t + 1) % self.rec_freq == 0:
           self.data_dict = {'t': (t + 1),
                             'agent_id': (i+1),
                             'action_id': (t*self.num_agents + i+1),
                             'time': end - start,
+                            'steps_taken': agent.steps_taken, 
                             'instant_regret': instant_regret,
                             'cum_regret': self.cum_regret[i],
                             'cum_optimal': self.cum_optimal, #changed
