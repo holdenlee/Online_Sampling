@@ -288,8 +288,11 @@ def sagald(t, d, data, batch_grad_f, prior_grad_f,
         gradients = batch_grad_f(x, sampled_data)
     if gradient is None:
         gradient = np.sum(gradients, axis=0)
-    start = time.time()
+    #start = time.time()
     Hinv = None if H is None else la.inv(H) 
+    #print('Matrix inversion took time %f' % (time.time() - start))
+    #Matrix inversion of this size (20x20) is usually lightning fast (1e-4 s) but for some reason it's slow (>0.1s) when run using slurm. No idea why. So I'm moving the start time down here.
+    start = time.time()
     for i in range(n_steps):
         (x, gradients, gradient) = \
              sagald_step(t, d, gradients, gradient, data, 
