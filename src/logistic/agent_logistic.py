@@ -624,8 +624,8 @@ class OnlineDiagLaplaceTS(ThompsonSampler):
             #t2 = math.log(1+math.exp(-(self.trans_reward(self.rewards[trial])*w.dot(m_chosen_arm))))
             #print((t1+t2).shape)
             return t1+t2
-        #print(self.est_coeffs.shape)
-        self.est_coeffs = scipy.optimize.minimize(obj,self.est_coeffs,method='BFGS').x
+        #print(self.est_coeffs.shape) #scipy.
+        self.est_coeffs = optimize.minimize(obj,self.est_coeffs,method='BFGS').x
         #self.est_coeffs = w
         p = evaluate_logistic(self.est_coeffs.dot(art_ctxt))
         #print(self.est_inv_vars.shape, (np.square(art_ctxt)*p*(1-p)).shape)
