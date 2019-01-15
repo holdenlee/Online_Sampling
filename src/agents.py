@@ -61,12 +61,25 @@ def make_agent(agent_name, num_articles, dim, sparsity, t, verbosity=1, batch_si
                                      step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
                                      time = t,
                                          init_pt=None, verbosity=verbosity)
+    elif agent_name == "mala_lf":
+        #self, num_articles, dim, intercept=False, context_has_constant=False, time=False, n_steps=100, verbosity=0
+        # Langevin-based
+        return MalaTS(num_articles, dim1, [0]*(dim1), cov=None, 
+                                     step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=9999,
+                                     time = t,
+                                         init_pt=None, verbosity=verbosity, leapfrog = True)
     elif agent_name == "mala_untimed":
         ## Untimed MALA agent is used as baseline.
         ## I don't know whether I should use 1+t or 1+\sqrt{sparsity/dim}*t
         return MalaTS(num_articles, dim1, [0]*dim1, cov=None, 
                                              step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=500,
                                              init_pt=None, verbosity=verbosity)
+    elif agent_name == "mala_lf_untimed":
+        ## Untimed MALA agent is used as baseline.
+        ## I don't know whether I should use 1+t or 1+\sqrt{sparsity/dim}*t
+        return MalaTS(num_articles, dim1, [0]*dim1, cov=None, 
+                                             step_size=lambda t: 0.1/(1 + t * np.sqrt(sparsity/dim)), n_steps=500,
+                                             init_pt=None, verbosity=verbosity, leapfrog = True)
     elif agent_name == "sgld":
         ## With stochastic gradients
         return SGLDTS(num_articles, dim1, [0]*(dim1), cov=None, 
@@ -104,7 +117,7 @@ def make_agent(agent_name, num_articles, dim, sparsity, t, verbosity=1, batch_si
                                               precondition='proper',
                                               init_pt=None, verbosity=verbosity, weights=True)
     elif agent_name == "prec_sagald_cum":
-        make_prec_cum_sagald_agent = lambda: SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
+        return SAGATS(num_articles, dim1, [0]*(dim1), cov=None, 
                                               step_size=lambda t: 0.05,
                                               batch_size = batch_size,
                                               time=t,
@@ -118,7 +131,7 @@ def make_agents(agent_names, num_articles, dim, sparsity, t, verbosity=1, batch_
     return [make_agent(name, num_articles, dim, sparsity, t, verbosity=verbosity, batch_size=batch_size, bias_term=bias_term) for name in agent_names]
 
 def make_default_agents(num_articles, dim, sparsity, t, verbosity=1, batch_size=64, bias_term=True):
-    return make_agents(['mala',
+    return make_agents(['mala_lf',
                         'laplace',
                         'online_laplace',
                         'pg',
@@ -126,4 +139,11 @@ def make_default_agents(num_articles, dim, sparsity, t, verbosity=1, batch_size=
                         'sgld',
                         'sagald',
                         'prec_sagald_nowt',
+                        'prec_sagald'], num_articles, dim, sparsity, t, verbosity=verbosity, batch_size=batch_size, bias_term=bias_term)
+
+def make_shortlist_agents(num_articles, dim, sparsity, t, verbosity=1, batch_size=64, bias_term=True):
+    return make_agents(['online_laplace',
+                        'pg',
+                        'sgld',
+                        'sagald',
                         'prec_sagald'], num_articles, dim, sparsity, t, verbosity=verbosity, batch_size=batch_size, bias_term=bias_term)

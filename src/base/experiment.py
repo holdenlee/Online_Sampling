@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import numpy.linalg as npla
 import pandas as pd
 import time
 from utils import *
@@ -235,7 +236,7 @@ class ExperimentMultipleAgents(BaseExperiment):
 class ExperimentCompare(BaseExperiment):
     
   def __init__(self, agents, environment, n_steps,
-               seed=0, rec_freq=1, unique_id='NULL', verbosity=0, force=False):
+               seed=0, rec_freq=1, unique_id='NULL', verbosity=0, force=False, toggle_at=0,slurm=False):
     """Setting up the experiment.
 
     Note that unique_id should be used to identify the job later for analysis.
@@ -256,6 +257,10 @@ class ExperimentCompare(BaseExperiment):
     self.cum_regret = [0 for _ in agents]
     self.v = verbosity
     self.force = force
+    if toggle_at>0:
+        self.force = True
+    self.toggle_steps = toggle_at
+    self.slurm=slurm
 
   def run_step_maybe_log(self, t):
     # Evolve the bandit (potentially contextual) for one step and pick action
@@ -291,7 +296,7 @@ class ExperimentCompare(BaseExperiment):
         self.cum_regret[i] += instant_regret
         printv(' Cum regret: %f' % self.cum_regret[i], self.v, 1)
         if (t + 1) % self.rec_freq == 0:
-          self.data_dict = {'t': (t + 1),
+            self.data_dict = {'t': (t + 1),
                             'agent_id': (i+1),
                             'action_id': (t*self.num_agents + i+1),
                             'time': end - start,
@@ -300,7 +305,7 @@ class ExperimentCompare(BaseExperiment):
                             'cum_regret': self.cum_regret[i],
                             'cum_optimal': self.cum_optimal, #changed
                             'unique_id': self.unique_id}
-          self.results.append(self.data_dict)
+            self.results.append(self.data_dict)
 
     # Advance the environment (used in nonstationary experiment)
     # This setup won't work in nonstationary
@@ -312,8 +317,13 @@ class ExperimentCompare(BaseExperiment):
     self.cum_optimal = 0
 
     for t in range(self.n_steps):
-      printv("Experiment: Step %d" % t, self.v, 1)
-      self.run_step_maybe_log(t)
-
+        if t==self.toggle_steps:
+            self.force=False
+        printv("Experiment: Step %d" % t, self.v, 1)
+#         if self.slurm:
+#             #Hack. For some reason, on slurm the first few invocations to npla take up a lot of time. So, burning it away.
+#             for i in range(4):
+#                 npla.inv(np.random.random((20,20)))
+        self.run_step_maybe_log(t)
     self.results = pd.DataFrame(self.results)
     

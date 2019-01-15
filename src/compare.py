@@ -44,7 +44,7 @@ verbosity=1
 batch_size = 64
 
 agents = make_default_agents(num_articles, dim, sparsity, time_limit, verbosity=verbosity, batch_size=batch_size, bias_term=True)
-results, cum_regrets = simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=verbosity, dist_type='Bernoulli')
+results, cum_regrets = simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=verbosity, dist_type='Bernoulli', slurm=True)
 print(results)
 print(cum_regrets)
 pickle.dump((results, cum_regrets), open('%s.p' % name,'wb'))

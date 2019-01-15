@@ -104,12 +104,12 @@ def redraw_samples_for_agents(agents, num, verbosity=1):
     samples_list = np.asarray(samples_list)
     return samples_list
 
-def simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=0, verbosity=0, force=False, graph=False, dist_type='Bernoulli'):
+def simple_compare(agents, num_articles, dim, sparsity, n_steps, seed=0, verbosity=0, force=False, graph=False, dist_type='Bernoulli', toggle_at=0, slurm=False):
     #env = FixedLogisticBandit(num_articles, dim, DistributionWithConstant(NormalDist(0,1,dim=dim-1),-2.5), DistributionWithConstant(BernoulliDist(5.0/(dim-1),dim-1)), seed=seed)
     env = LogisticBandit(num_articles, dim+1, NormalDist(0,1,dim=dim+1), DistributionWithConstant(BernoulliDist(sparsity/dim,dim)), seed=seed) if dist_type=='Bernoulli' else LogisticBandit(num_articles, dim, NormalDist(0,1,dim=dim), (NormalDist(0,sparsity,dim=dim)), seed=seed) #'Normal'
     #sparsity is var in the second case. #rn, Bernoulli is no-bias.
     experiment = ExperimentCompare(agents, env, n_steps,
-                   seed=seed, verbosity=verbosity, force=force)
+                   seed=seed, verbosity=verbosity, force=force, toggle_at=toggle_at, slurm=slurm)
     experiment.run_experiment()
     results = []
     results.append(experiment.results)

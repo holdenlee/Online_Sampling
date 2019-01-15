@@ -127,15 +127,36 @@ def mala_step(d, data, f, prior_f, grad_f, prior_grad_f,
     #samp = z if np.random.random()<p else x
     return samp, accept, min(p,1)
 
+def mala_lf_step(d, data, f, prior_f, grad_f, prior_grad_f, 
+                  x, step_size = 0.01):
+    grads = grad_f(x, data)
+    gradient = np.sum(grads, axis = 0)
+    g_prior = prior_grad_f(x)
+    g = gradient + g_prior
+    noise = np.random.randn(d)
+    #preconditioner_sqrt.dot(np.random.randn(self.dim)) 
+    scaled_noise = np.sqrt(2*step_size)*noise
+    z = x - step_size * g + \
+        scaled_noise
+    def H(x,v):
+        return np.sum(f(x,data), axis=0) + prior_f(x) + 0.5*np.sum(np.square(v))
+    grads_z = grad_f(z, data)
+    gz = np.sum(grads_z, axis=0) + prior_grad_f(z)
+    v = noise - np.sqrt(step_size/2)*g - np.sqrt(step_size/2)*gz
+    p = np.exp(H(z,v)-H(x,noise))
+    (samp, accept) = (z, True) if np.random.random()<p else (x, False)
+    #samp = z if np.random.random()<p else x
+    return samp, accept, min(p,1)
+
 def mala(d, data, f, prior_f, grad_f, prior_grad_f, 
-             step_size = 0.01, n_steps=100, init_pt=None, time_limit=0.0):
+             step_size = 0.01, n_steps=100, init_pt=None, time_limit=0.0, leapfrog=False):
     accepts = 0.0
     if init_pt is None:
         init_pt = np.zeros(d)
     x = init_pt
     start = time.time()
     for t in range(n_steps):
-        x, accept, _ = mala_step(d, data, f, prior_f, grad_f, prior_grad_f, x, step_size)
+        x, accept, _ = (mala_lf_step if leapfrog else mala_step)(d, data, f, prior_f, grad_f, prior_grad_f, x, step_size)
         if accept:
             accepts += 1
         if time_limit > 0 and time.time() - start > time_limit:
@@ -288,16 +309,24 @@ def sagald(t, d, data, batch_grad_f, prior_grad_f,
         gradients = batch_grad_f(x, sampled_data)
     if gradient is None:
         gradient = np.sum(gradients, axis=0)
-    #start = time.time()
+    #Hack. For some reason, on slurm the first few invocations to npla take up a lot of time. So, burning it away.
+    #for i in range(4):
+    #    start = time.time()
+    #    la.inv(np.random.random((20,20)))
+    #    print(time.time() - start)
+    #End hack.
+    start = time.time()
     Hinv = None if H is None else la.inv(H) 
     #print('Matrix inversion took time %f' % (time.time() - start))
     #Matrix inversion of this size (20x20) is usually lightning fast (1e-4 s) but for some reason it's slow (>0.1s) when run using slurm. No idea why. So I'm moving the start time down here.
-    start = time.time()
+    #start = time.time()
     for i in range(n_steps):
+        #start2 = time.time()
         (x, gradients, gradient) = \
              sagald_step(t, d, gradients, gradient, data, 
                          batch_grad_f, prior_grad_f, 
                          x, batch_size = batch_size, step_size = step_size, Hinv=Hinv, weights = weights)
+        #print(' SAGA step %d: %f' % (i, time.time() - start2))
         if time_limit > 0 and time.time() - start > time_limit:
             break
     return x, gradients, gradient, i+1

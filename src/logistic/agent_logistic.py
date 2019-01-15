@@ -662,11 +662,11 @@ class LangevinTS(ThompsonSampler):
         if self.precondition == 'full':
             self.H = 0.5*npla.inv(self.cov) + logistic_Hessian(self.theta, self.contexts)
         elif self.precondition == 'cum': #cumulative
-            self.H += logistic_Hessian(self.theta, context)
+            self.H += logistic_Hessian(self.theta, context[article])
         elif self.precondition == 'proper':
             tp = round_down_to_power_2(self.num_plays)
             if self.num_plays == tp:
-                self.H += logistic_Hessian(self.theta, context)
+                self.H += logistic_Hessian(self.theta, context[article])
                 self.last_last_theta = self.last_theta
                 self.last_last_theta_t = self.last_theta_t
                 self.last_theta=self.theta
@@ -677,11 +677,11 @@ class LangevinTS(ThompsonSampler):
                 #print("+", (self.last_theta_t, self.num_plays), 
                 #      (self.last_theta_t, self.num_plays-tp))
                 #print("-", (self.last_last_theta_t,self.num_plays-tp))
-                self.H += logistic_Hessian(self.last_theta, context) -\
+                self.H += logistic_Hessian(self.last_theta, context[article]) -\
                           logistic_Hessian(self.last_last_theta, self.contexts[self.num_plays - tp - 1]) +\
                           logistic_Hessian(self.last_theta, self.contexts[self.num_plays - tp - 1])
         
-class BasicLangevinTS(LangevinTS):        
+class BasicLangevinTS(LangevinTS):    
     def get_sample(self):
         self.theta, steps = langevin(self.dim, [self.contexts, self.rewards], logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
                               time_limit = self.time,
@@ -691,13 +691,18 @@ class BasicLangevinTS(LangevinTS):
         self.steps_taken = steps
         return self.theta
     
-class MalaTS(LangevinTS):        
+class MalaTS(LangevinTS):   
+    def __init__(self, num_articles, dim, mu, cov=None, step_size=0.1, n_steps=100, init_pt=None, time=0, verbosity=0, precondition=False,leapfrog=False):
+        LangevinTS.__init__(self, num_articles, dim, mu, cov, step_size, n_steps, init_pt, time, verbosity, precondition)
+        self.leapfrog=leapfrog
+        
     def get_sample(self):
         self.theta, self.accepts, steps = mala(self.dim, [self.contexts, self.rewards], 
                                         logistic_f, Gaussian_prior_f(self.mu),
                                         logistic_grad_f, Gaussian_prior_grad_f(self.mu), 
                                         time_limit=self.time,
-                                        step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta)
+                                        step_size = self.step_size(self.num_plays), n_steps = self.n_steps, init_pt = self.theta,
+                                        leapfrog = self.leapfrog)
         printv(" Sample: " + repr(self.theta), self.v, 2)
         printv(" Accept proportion: %f" % self.accepts, self.v, 1)
         printv(" Steps taken: %d" % steps, self.v, 1)
