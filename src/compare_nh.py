@@ -43,7 +43,7 @@ verbosity=1
 
 batch_size = 64
 
-for seed in range(0,seeds+1):
+for seed in range(1,seeds+1):
     agents = make_default_agents(num_articles, dim, sparsity, time_limit, verbosity=verbosity, batch_size=batch_size, bias_term=True)
     results, cum_regrets = simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=verbosity, dist_type='Bernoulli', slurm=True)
     print(results)
@@ -52,4 +52,9 @@ for seed in range(0,seeds+1):
     pickle.dump(regrets[0], open('%s_%d_regrets.p' % (name, seed),'wb'))
     
 
-#run: nohup python compare_nh.py 0.1 1000 '../outputs/compare_time_0_1_trials_1000/seed' 100
+#run:
+#nohup python compare_nh.py 0.1 1000 ../outputs/compare_time_0_1_trials_1000/seed 100 > ../outputs/compare_time_0_1_trials_1000/log.log 2>&1 &
+
+
+
+
