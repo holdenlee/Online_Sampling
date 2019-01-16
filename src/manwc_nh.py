@@ -31,7 +31,7 @@ warnings.filterwarnings('ignore')
 #print 'Argument List:', str(sys.argv)
 time=0.1
 T=1000
-name='../outputs/ma/nwc2'
+name='outputs/ma/nwc2'
 seed=201
 num_articles = 100
 dim = 20
