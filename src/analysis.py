@@ -30,7 +30,7 @@ from graph_utils import *
 name = '../outputs/compare_time_0_1_trials_1000/seed'
 results_list = []
 regrets_list = []
-for i in range(1,15):
+for i in range(1,34):
     results = pd.read_pickle(open('%s_%d_results.p' % (name, i), 'rb'))
     regrets = pickle.load(open('%s_%d_regrets.p' % (name, i), 'rb')) if i != 1 else [30.112570676021964, 55.61220382233826, 44.82029246480474, 34.71447869419428, 35.94746494602103, 100.33048996420474, 41.95934741021247, 33.96480808424565, 39.080878341643015]
     results_list += [results]
