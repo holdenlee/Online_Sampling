@@ -16,12 +16,12 @@ from agents import *
 import copy
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy.linalg as npla
 import scipy.linalg as spla
 import pickle
 import pandas as pd
-import plotnine as gg
+#import plotnine as gg
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -51,7 +51,7 @@ mala_agent = MalaTS(num_articles, dim1, [0]*dim1, cov=None,
                     'prec_sagald']"""
 agents = [mala_agent]+agents
 results = simple_compare(agents, num_articles, dim, sparsity, T, seed, verbosity=1, force=True)
-agents_info = 
+agents_info =\
     [agents[0].theta,
                (agents[1].est_coeffs, agents[1].est_inv_vars),
                agents[3].theta,
