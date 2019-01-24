@@ -54,6 +54,7 @@ for seed in range(1,seeds+1):
 cum_regrets_array = np.asarray(cum_regrets_list)
 avg_regrets = np.mean(cum_regrets_array, axis=0)
 print(avg_regrets)
-    """
+
+"""
     [9.609577211676948, 9.631305721679768, 9.595549955459072, 9.049107889173861, 9.594515897813, 23.045289883872908, 9.199815752495159, 9.180508408854028, 9.264632848194701]
-    """
+"""
