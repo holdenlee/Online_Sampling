@@ -1,9 +1,19 @@
-Fork
+About
 ====
 
-Added variance-reduced SGLD for logistic contextual bandits.
+Accompanying code for "Online Sampling from Log-Concave Distributions."
 
-To push: `git push https://github.com/holdenlee/ts_tutorial.git master`.
+Includes implementation of variance-reduced SGLD for online logistic regression and logistic contextual bandits.
+
+Dependencies: numpy, scipy, pandas, plotnine, pypolyagamma (https://github.com/slinderman/pypolyagamma)
+
+To reproduce figures in code: 
+
++ Run `mawc_nh2.cmd`. This script runs `src/mawc_nh2.py`, which runs the experiment detailed in the paper for five algorithms: MALA, Online Laplace, Polya-Gamma, SGLD, and SAGA-LD. It saves the results to the folder `outputs/ma/`. This will take a while.
++ Evaluate `/src/Plots.ipynb` to produce the plots. It loads the data from `outputs/ma/` and draws the plots.
+
+This code is forked from `https://github.com/iosband/ts_tutorial.git`. Below is the original readme for the repository.
+
 
 A Tutorial on Thompson Sampling - Accompanying Code
 ===================================================
