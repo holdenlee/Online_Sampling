@@ -40,7 +40,7 @@ sparsity = 5.0
 verbosity=1
 batch_size = 64
 
-for seed in range(1007,1011):
+for seed in range(1001,1011):
 	agents = make_shortlist_agents(num_articles, dim, sparsity, time, verbosity=verbosity, batch_size=batch_size, bias_term=True)
 	mala_agent = MalaTS(num_articles, dim1, [0]*dim1, cov=None, 
 												 step_size=lambda t: 0.5/(1 + t * np.sqrt(sparsity/dim)), time=time, n_steps=9999,
